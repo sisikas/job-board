@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLocations } from "@/lib/jobs";
+import { LocationFilter } from "@/components/LocationFilter";
 
 export async function BoardHeader({
   q = "",
@@ -45,36 +46,11 @@ export async function BoardHeader({
               color: "var(--brand-ink)",
             }}
           />
-          <select
-            name="location"
+          <LocationFilter
+            cities={locations.cities}
+            countries={locations.countries}
             defaultValue={location}
-            className="rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 sm:w-56"
-            style={{
-              background: "var(--brand-card)",
-              border: "1px solid var(--brand-input-border)",
-              color: "var(--brand-ink)",
-            }}
-          >
-            <option value="">All locations</option>
-            {locations.cities.length > 0 && (
-              <optgroup label="Cities">
-                {locations.cities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {locations.countries.length > 0 && (
-              <optgroup label="Countries">
-                {locations.countries.map((country) => (
-                  <option key={country} value={country}>
-                    {country}
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+          />
           <button
             type="submit"
             className="rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-colors"

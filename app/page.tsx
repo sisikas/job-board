@@ -76,9 +76,12 @@ export default async function Home({
                         <h2 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--brand-ink)" }}>
                           {job.role}
                         </h2>
-                        <p className="text-sm mt-1" style={{ color: "var(--brand-meta)" }}>
-                          {job.venue} &middot; {job.city}
-                          {job.country ? `, ${job.country}` : ""}
+                        <p className="text-sm mt-1 font-semibold" style={{ color: "var(--brand-meta)" }}>
+                          {job.venue} &middot;{" "}
+                          <span style={{ color: "var(--brand-brick)" }}>
+                            {job.city}
+                            {job.country ? `, ${job.country}` : ""}
+                          </span>
                         </p>
                       </div>
                       <span
