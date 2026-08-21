@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
+/* Bricolage Grotesque — self-hosted (no external font requests) */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/bricolage-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/bricolage-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/bricolage-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/bricolage-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf3e4;
+  --foreground: #211c14;
+
+  /* brand palette — pulled from the.goodsort's logo/feed */
+  --brand-cream: #f7e9bd;
+  --brand-card: #fdfaf6;
+  --brand-card-border: #ece0c4;
+  --brand-ink: #211c14;
+  --brand-muted: #7d7263;
+  --brand-meta: #8a7f68;
+  --brand-date: #c4b89a;
+  --brand-body: #2f2a22;
+  --brand-brick: #4082a1;
+  --brand-brick-dark: #246482;
+  --brand-input-border: #e0d5b8;
+  --brand-forest: #63912f;
+  --brand-forest-dark: #2c3820;
+  --brand-logo-green: #517228;
+
+  /* apply chip tints */
+  --apply-email-bg: #dcdcc4;
+  --apply-email-dot: #5c6b32;
+  --apply-instagram-bg: #f0d6cc;
+  --apply-instagram-dot: #a8462c;
+  --apply-link-bg: #e6e1d3;
+  --apply-link-dot: #6b6252;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Bricolage Grotesque", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
