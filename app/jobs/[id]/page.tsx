@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getJob, getSimilarJobs, getApplyInfo, getInstagramHref } from "@/lib/jobs";
 import { formatDate } from "@/lib/format";
 import { ApplyButton } from "@/components/ApplyButton";
@@ -7,6 +8,29 @@ import { BoardHeader } from "@/components/BoardHeader";
 import { InstagramLink } from "@/components/InstagramLink";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const job = await getJob(id);
+  if (!job) return { title: "Position not found" };
+
+  const title = `${job.role} — ${job.venue}`;
+  const description = [job.city, job.country].filter(Boolean).join(", ");
+
+  return {
+    title,
+    description: description || "Open position at The Good Sort",
+    openGraph: {
+      title,
+      description,
+      images: [{ url: "/og.png", width: 1200, height: 630, alt: "The Good Sort" }],
+    },
+  };
+}
 
 export default async function JobDetail({
   params,
