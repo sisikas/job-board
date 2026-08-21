@@ -2,6 +2,7 @@ import Link from "next/link";
 import { searchJobs } from "@/lib/jobs";
 import { formatDate } from "@/lib/format";
 import { BoardHeader } from "@/components/BoardHeader";
+import { InstagramLink } from "@/components/InstagramLink";
 
 export const dynamic = "force-dynamic";
 
@@ -120,6 +121,13 @@ export default async function Home({
           className="max-w-3xl mx-auto px-4 py-6 text-xs text-center"
           style={{ color: "var(--brand-logo-green)" }}
         >
+          <div className="mb-3 flex justify-center">
+            <InstagramLink
+              href="https://www.instagram.com/the.goodsort/"
+              venueName="The Good Sort"
+              color="var(--brand-logo-green)"
+            />
+          </div>
           Have a question about a specific role? Send a DM and mention the
           role and location.
         </div>

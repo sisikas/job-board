@@ -1,9 +1,11 @@
 export function InstagramLink({
   href,
   venueName,
+  color = "var(--brand-ink)",
 }: {
   href: string;
   venueName: string;
+  color?: string;
 }) {
   return (
     <a
@@ -12,7 +14,7 @@ export function InstagramLink({
       rel="noopener noreferrer"
       aria-label={`${venueName} on Instagram`}
       className="inline-flex items-center justify-center rounded-xl p-1.5 transition-opacity hover:opacity-80"
-      style={{ color: "var(--brand-ink)" }}
+      style={{ color }}
     >
       <svg
         viewBox="0 0 24 24"
