@@ -161,21 +161,29 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
 }
 
 /**
- * Cities and countries kept separate (rather than one flat merged list) so
- * the filter dropdown can group them instead of mixing "Athens" and
- * "Greece" together with no indication of which is which.
+ * Locations grouped country → cities so the filter can list countries first,
+ * with each country's cities nested underneath.
  */
-export async function getLocations(): Promise<{ cities: string[]; countries: string[] }> {
+export type LocationGroup = { country: string; cities: string[] };
+
+export async function getLocations(): Promise<{ groups: LocationGroup[] }> {
   const jobs = await getAllJobs();
-  const cities = new Set<string>();
-  const countries = new Set<string>();
+  const byCountry = new Map<string, Set<string>>();
+
   jobs.forEach((j) => {
-    if (j.city) cities.add(j.city);
-    if (j.country) countries.add(j.country);
+    const country = j.country?.trim() || "Other";
+    const city = j.city?.trim();
+    if (!byCountry.has(country)) byCountry.set(country, new Set());
+    if (city) byCountry.get(country)!.add(city);
   });
+
   return {
-    cities: Array.from(cities).sort(),
-    countries: Array.from(countries).sort(),
+    groups: Array.from(byCountry.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([country, cities]) => ({
+        country,
+        cities: Array.from(cities).sort((a, b) => a.localeCompare(b)),
+      })),
   };
 }
 

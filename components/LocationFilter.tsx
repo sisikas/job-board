@@ -1,16 +1,15 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import type { LocationGroup } from "@/lib/jobs";
 
-type Suggestion = { name: string; kind: "City" | "Country" };
+type Suggestion = { name: string; kind: "country" | "city" };
 
 export function LocationFilter({
-  cities,
-  countries,
+  groups,
   defaultValue = "",
 }: {
-  cities: string[];
-  countries: string[];
+  groups: LocationGroup[];
   defaultValue?: string;
 }) {
   const [value, setValue] = useState(defaultValue);
@@ -21,14 +20,31 @@ export function LocationFilter({
 
   const query = value.trim().toLowerCase();
 
+  const visibleGroups = useMemo(() => {
+    if (!query) return groups;
+    return groups
+      .map((group) => {
+        const countryMatch = group.country.toLowerCase().includes(query);
+        const matchingCities = group.cities.filter((city) =>
+          city.toLowerCase().includes(query)
+        );
+        if (countryMatch) return group;
+        if (matchingCities.length === 0) return null;
+        return { country: group.country, cities: matchingCities };
+      })
+      .filter((group): group is LocationGroup => group !== null);
+  }, [groups, query]);
+
   const suggestions = useMemo<Suggestion[]>(() => {
-    const cityHits = cities.filter((c) => !query || c.toLowerCase().includes(query));
-    const countryHits = countries.filter((c) => !query || c.toLowerCase().includes(query));
-    return [
-      ...cityHits.map((name) => ({ name, kind: "City" as const })),
-      ...countryHits.map((name) => ({ name, kind: "Country" as const })),
-    ];
-  }, [cities, countries, query]);
+    const items: Suggestion[] = [];
+    for (const group of visibleGroups) {
+      items.push({ name: group.country, kind: "country" });
+      for (const city of group.cities) {
+        items.push({ name: city, kind: "city" });
+      }
+    }
+    return items;
+  }, [visibleGroups]);
 
   function clearBlurTimer() {
     if (blurTimer.current) {
@@ -77,7 +93,7 @@ export function LocationFilter({
         name="location"
         value={value}
         autoComplete="off"
-        placeholder="City or country"
+        placeholder="Type City or Country"
         onChange={(e) => {
           setValue(e.target.value);
           setOpen(true);
@@ -107,29 +123,30 @@ export function LocationFilter({
         <ul
           id="location-suggestions"
           role="listbox"
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl py-1 shadow-lg"
+          className="absolute z-20 mt-1 max-h-72 w-full min-w-[14rem] overflow-auto rounded-xl py-1 shadow-lg"
           style={{
             background: "var(--brand-card)",
             border: "1px solid var(--brand-card-border)",
           }}
         >
           {suggestions.map((item, index) => (
-            <li key={`${item.kind}-${item.name}`} role="option" aria-selected={index === highlight}>
+            <li key={`${item.kind}-${item.name}-${index}`} role="option" aria-selected={index === highlight}>
               <button
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(item.name)}
                 onMouseEnter={() => setHighlight(index)}
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm"
+                className={`flex w-full text-left ${
+                  item.kind === "country"
+                    ? "px-3 py-2 text-sm font-semibold"
+                    : "px-3 py-1.5 pl-7 text-sm"
+                }`}
                 style={{
                   background: index === highlight ? "var(--brand-cream)" : "transparent",
-                  color: "var(--brand-ink)",
+                  color: item.kind === "country" ? "var(--brand-ink)" : "var(--brand-muted)",
                 }}
               >
-                <span>{item.name}</span>
-                <span className="text-xs" style={{ color: "var(--brand-muted)" }}>
-                  {item.kind}
-                </span>
+                {item.name}
               </button>
             </li>
           ))}

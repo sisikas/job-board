@@ -47,8 +47,7 @@ export async function BoardHeader({
             }}
           />
           <LocationFilter
-            cities={locations.cities}
-            countries={locations.countries}
+            groups={locations.groups}
             defaultValue={location}
           />
           <button
