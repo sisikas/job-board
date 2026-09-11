@@ -6,6 +6,10 @@ import { todayISODate } from "@/lib/format";
 
 type DraftJob = Omit<Job, "id" | "postedAt"> & { id?: string; postedAt?: string };
 
+function inputSize(value: string, min = 10) {
+  return Math.max((value || "").length + 2, min);
+}
+
 function blankDraft(): DraftJob {
   return {
     role: "",
@@ -310,9 +314,9 @@ export default function AdminPage() {
           </button>
         </form>
 
-        {/* Existing postings table */}
+        {/* Existing postings table — wide enough for full values; scroll sideways for the rest */}
         <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-x-auto">
-          <table className="w-full text-sm min-w-[1200px]">
+          <table className="w-max text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-neutral-200 text-left text-neutral-500">
                 <th className="px-4 py-3 font-medium">Role</th>
@@ -337,7 +341,8 @@ export default function AdminPage() {
                       onChange={(e) =>
                         updateLocalJob(job.id, "role", e.target.value)
                       }
-                      className="w-full rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                      size={inputSize(job.role, 12)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -346,7 +351,8 @@ export default function AdminPage() {
                       onChange={(e) =>
                         updateLocalJob(job.id, "venue", e.target.value)
                       }
-                      className="w-full rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                      size={inputSize(job.venue, 14)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -355,7 +361,8 @@ export default function AdminPage() {
                       onChange={(e) =>
                         updateLocalJob(job.id, "city", e.target.value)
                       }
-                      className="w-full rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                      size={inputSize(job.city, 10)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -364,16 +371,18 @@ export default function AdminPage() {
                       onChange={(e) =>
                         updateLocalJob(job.id, "country", e.target.value)
                       }
-                      className="w-full rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                      size={inputSize(job.country, 10)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
-                  <td className="px-4 py-2 min-w-[200px]">
+                  <td className="px-4 py-2">
                     <input
                       value={job.description}
                       onChange={(e) =>
                         updateLocalJob(job.id, "description", e.target.value)
                       }
-                      className="w-full rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                      size={inputSize(job.description, 28)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -389,7 +398,7 @@ export default function AdminPage() {
                       <option value="link">Link</option>
                     </select>
                   </td>
-                  <td className="px-4 py-2 min-w-[160px]">
+                  <td className="px-4 py-2">
                     <input
                       value={job.applyContact}
                       placeholder={
@@ -402,17 +411,19 @@ export default function AdminPage() {
                       onChange={(e) =>
                         updateLocalJob(job.id, "applyContact", e.target.value)
                       }
-                      className="w-full rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                      size={inputSize(job.applyContact, 18)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
-                  <td className="px-4 py-2 min-w-[180px]">
+                  <td className="px-4 py-2">
                     <input
                       value={job.instagramUrl || ""}
                       placeholder="https://instagram.com/..."
                       onChange={(e) =>
                         updateLocalJob(job.id, "instagramUrl", e.target.value)
                       }
-                      className="w-full rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                      size={inputSize(job.instagramUrl || "", 28)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
                   <td className="px-4 py-2">
