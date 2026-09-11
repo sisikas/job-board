@@ -28,7 +28,7 @@ export async function BoardHeader({
           Search by role or filter by location to see current openings.
         </p>
       </div>
-      <div className="max-w-3xl mx-auto px-4">
+      <div className="max-w-3xl mx-auto px-4 pb-8 sm:pb-10">
         <form
           method="get"
           action="/"
@@ -46,6 +46,12 @@ export async function BoardHeader({
               color: "var(--brand-ink)",
             }}
           />
+          <span
+            className="self-center text-sm font-bold"
+            style={{ color: "var(--brand-brick)" }}
+          >
+            OR
+          </span>
           <LocationFilter
             groups={locations.groups}
             defaultValue={location}

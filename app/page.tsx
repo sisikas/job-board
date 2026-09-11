@@ -22,7 +22,7 @@ export default async function Home({
       <BoardHeader q={q} location={location} />
 
       <main className="flex-1">
-        <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
+        <div className="max-w-3xl mx-auto px-4 pt-6 pb-6 sm:pt-8 sm:pb-8">
           {(q || location) && (
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm" style={{ color: "var(--brand-muted)" }}>
