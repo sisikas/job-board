@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Job } from "@/lib/jobs";
 import { todayISODate } from "@/lib/format";
 import { COUNTRIES } from "@/lib/countries";
@@ -10,6 +10,75 @@ type DraftJob = Omit<Job, "id" | "postedAt"> & { id?: string; postedAt?: string 
 
 function inputSize(value: string, min = 10) {
   return Math.max((value || "").length + 2, min);
+}
+
+type ColumnFilters = {
+  role: string;
+  venue: string;
+  city: string;
+  country: string;
+  description: string;
+  applyMethod: string;
+  applyContact: string;
+  instagramUrl: string;
+  postedAt: string;
+  status: string;
+};
+
+function emptyFilters(): ColumnFilters {
+  return {
+    role: "",
+    venue: "",
+    city: "",
+    country: "",
+    description: "",
+    applyMethod: "",
+    applyContact: "",
+    instagramUrl: "",
+    postedAt: "",
+    status: "",
+  };
+}
+
+function matchesFilter(value: string, query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (value || "").toLowerCase().includes(q);
+}
+
+function ColumnSearch({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      type="search"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Search…"
+      className="block w-full min-w-28 rounded border border-neutral-200 px-2 py-1 text-xs font-normal text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400"
+    />
+  );
+}
+
+function ColumnHeader({
+  label,
+  children,
+}: {
+  label: string;
+  children?: ReactNode;
+}) {
+  return (
+    <th className="px-4 py-3 font-medium align-top whitespace-normal">
+      <div className="flex flex-col items-stretch gap-1.5">
+        <span>{label}</span>
+        {children}
+      </div>
+    </th>
+  );
 }
 
 function blankDraft(): DraftJob {
@@ -37,6 +106,7 @@ export default function AdminPage() {
   const [newJob, setNewJob] = useState<DraftJob>(blankDraft);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>(emptyFilters);
 
   async function loadJobs() {
     setLoading(true);
@@ -166,6 +236,26 @@ export default function AdminPage() {
     );
     return [...usedCountries, ...rest];
   }, [usedCountries]);
+
+  const visibleJobs = useMemo(() => {
+    return jobs.filter(
+      (job) =>
+        matchesFilter(job.role, columnFilters.role) &&
+        matchesFilter(job.venue, columnFilters.venue) &&
+        matchesFilter(job.city, columnFilters.city) &&
+        matchesFilter(job.country, columnFilters.country) &&
+        matchesFilter(job.description, columnFilters.description) &&
+        matchesFilter(job.applyMethod, columnFilters.applyMethod) &&
+        matchesFilter(job.applyContact, columnFilters.applyContact) &&
+        matchesFilter(job.instagramUrl, columnFilters.instagramUrl) &&
+        matchesFilter(job.postedAt, columnFilters.postedAt) &&
+        matchesFilter(job.status, columnFilters.status)
+    );
+  }, [jobs, columnFilters]);
+
+  function setColumnFilter(field: keyof ColumnFilters, value: string) {
+    setColumnFilters((prev) => ({ ...prev, [field]: value }));
+  }
 
   if (authed === null) {
     return (
@@ -354,25 +444,75 @@ export default function AdminPage() {
 
         {/* Existing postings table — wide enough for full values; scroll sideways for the rest */}
         <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-x-auto">
-          <table className="w-max text-sm whitespace-nowrap">
+          <table className="w-max text-sm">
             <thead>
               <tr className="border-b border-neutral-200 text-left text-neutral-500">
-                <th className="px-4 py-3 font-medium">Role</th>
-                <th className="px-4 py-3 font-medium">Venue</th>
-                <th className="px-4 py-3 font-medium">City</th>
-                <th className="px-4 py-3 font-medium">Country</th>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium">Apply method</th>
-                <th className="px-4 py-3 font-medium">Apply contact</th>
-                <th className="px-4 py-3 font-medium">Instagram URL</th>
-                <th className="px-4 py-3 font-medium">Posted date</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <ColumnHeader label="Role">
+                  <ColumnSearch
+                    value={columnFilters.role}
+                    onChange={(value) => setColumnFilter("role", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Venue">
+                  <ColumnSearch
+                    value={columnFilters.venue}
+                    onChange={(value) => setColumnFilter("venue", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="City">
+                  <ColumnSearch
+                    value={columnFilters.city}
+                    onChange={(value) => setColumnFilter("city", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Country">
+                  <ColumnSearch
+                    value={columnFilters.country}
+                    onChange={(value) => setColumnFilter("country", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Description">
+                  <ColumnSearch
+                    value={columnFilters.description}
+                    onChange={(value) => setColumnFilter("description", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Apply method">
+                  <ColumnSearch
+                    value={columnFilters.applyMethod}
+                    onChange={(value) => setColumnFilter("applyMethod", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Apply contact">
+                  <ColumnSearch
+                    value={columnFilters.applyContact}
+                    onChange={(value) => setColumnFilter("applyContact", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Instagram URL">
+                  <ColumnSearch
+                    value={columnFilters.instagramUrl}
+                    onChange={(value) => setColumnFilter("instagramUrl", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Posted date">
+                  <ColumnSearch
+                    value={columnFilters.postedAt}
+                    onChange={(value) => setColumnFilter("postedAt", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Status">
+                  <ColumnSearch
+                    value={columnFilters.status}
+                    onChange={(value) => setColumnFilter("status", value)}
+                  />
+                </ColumnHeader>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
-              {jobs.map((job) => (
-                <tr key={job.id} className="border-b border-neutral-100 last:border-0">
+              {visibleJobs.map((job) => (
+                <tr key={job.id} className="border-b border-neutral-100 last:border-0 whitespace-nowrap">
                   <td className="px-4 py-2">
                     <input
                       value={job.role}
@@ -507,6 +647,13 @@ export default function AdminPage() {
                 <tr>
                   <td colSpan={11} className="px-4 py-8 text-center text-neutral-400">
                     No postings yet — add one above.
+                  </td>
+                </tr>
+              )}
+              {!loading && jobs.length > 0 && visibleJobs.length === 0 && (
+                <tr>
+                  <td colSpan={11} className="px-4 py-8 text-center text-neutral-400">
+                    No postings match these column searches.
                   </td>
                 </tr>
               )}
