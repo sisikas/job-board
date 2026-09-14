@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Job } from "@/lib/jobs";
 import { todayISODate } from "@/lib/format";
+import { COUNTRIES } from "@/lib/countries";
+import { SuggestInput } from "@/components/SuggestInput";
 
 type DraftJob = Omit<Job, "id" | "postedAt"> & { id?: string; postedAt?: string };
 
@@ -129,6 +131,42 @@ export default function AdminPage() {
     );
   }
 
+  const usedCities = useMemo(() => {
+    return Array.from(
+      new Set(jobs.map((j) => j.city.trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+  }, [jobs]);
+
+  const usedCountries = useMemo(() => {
+    return Array.from(
+      new Set(jobs.map((j) => j.country.trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b));
+  }, [jobs]);
+
+  const cityOptions = useMemo(() => {
+    const selected = newJob.country.trim().toLowerCase();
+    if (!selected) return usedCities;
+    const inCountry = jobs
+      .filter((j) => j.country.trim().toLowerCase() === selected)
+      .map((j) => j.city.trim())
+      .filter(Boolean);
+    const uniqueInCountry = Array.from(new Set(inCountry)).sort((a, b) =>
+      a.localeCompare(b)
+    );
+    const rest = usedCities.filter(
+      (city) => !uniqueInCountry.some((c) => c.toLowerCase() === city.toLowerCase())
+    );
+    return [...uniqueInCountry, ...rest];
+  }, [jobs, newJob.country, usedCities]);
+
+  const countryOptions = useMemo(() => {
+    const rest = COUNTRIES.filter(
+      (country) =>
+        !usedCountries.some((used) => used.toLowerCase() === country.toLowerCase())
+    );
+    return [...usedCountries, ...rest];
+  }, [usedCountries]);
+
   if (authed === null) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -222,19 +260,19 @@ export default function AdminPage() {
               onChange={(e) => setNewJob({ ...newJob, venue: e.target.value })}
               className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
             />
-            <input
+            <SuggestInput
               placeholder="City *"
               value={newJob.city}
-              onChange={(e) => setNewJob({ ...newJob, city: e.target.value })}
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              onChange={(city) => setNewJob({ ...newJob, city })}
+              options={cityOptions}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
             />
-            <input
+            <SuggestInput
               placeholder="Country"
               value={newJob.country}
-              onChange={(e) =>
-                setNewJob({ ...newJob, country: e.target.value })
-              }
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              onChange={(country) => setNewJob({ ...newJob, country })}
+              options={countryOptions}
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
             />
             <select
               value={newJob.applyMethod}
