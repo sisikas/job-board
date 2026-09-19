@@ -34,17 +34,9 @@ export async function BoardHeader({
           action="/"
           className="flex flex-col sm:flex-row gap-3"
         >
-          <input
-            type="text"
-            name="q"
-            defaultValue={q}
-            placeholder={'Search by role, e.g. "bartender"'}
-            className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
-            style={{
-              background: "var(--brand-card)",
-              border: "1px solid var(--brand-input-border)",
-              color: "var(--brand-ink)",
-            }}
+          <LocationFilter
+            groups={locations.groups}
+            defaultValue={location}
           />
           <span
             className="self-center text-sm font-bold"
@@ -52,9 +44,17 @@ export async function BoardHeader({
           >
             OR
           </span>
-          <LocationFilter
-            groups={locations.groups}
-            defaultValue={location}
+          <input
+            type="text"
+            name="q"
+            defaultValue={q}
+            placeholder={'Search by role, e.g. "chef"'}
+            className="flex-1 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2"
+            style={{
+              background: "var(--brand-card)",
+              border: "1px solid var(--brand-input-border)",
+              color: "var(--brand-ink)",
+            }}
           />
           <button
             type="submit"
