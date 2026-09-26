@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { getLocations } from "@/lib/jobs";
 import { LocationFilter } from "@/components/LocationFilter";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export async function BoardHeader({
   q = "",
@@ -13,26 +13,17 @@ export async function BoardHeader({
 
   return (
     <header>
-      <div className="max-w-3xl mx-auto px-4 pt-10 sm:pt-12 flex flex-col items-center">
-        <Link href="/">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.png"
-            alt="The Good Sort"
-            className="w-28 sm:w-32 h-auto"
-          />
-        </Link>
-      </div>
-      <div className="max-w-3xl mx-auto px-4 pt-16 pb-4 sm:pt-20">
+      <SiteHeader />
+      <div className="max-w-3xl mx-auto px-4 pt-5 pb-3 sm:pt-10 sm:pb-4">
         <p className="text-sm sm:text-base" style={{ color: "var(--brand-muted)" }}>
-          Search by role or filter by location to see current openings.
+          Search by role or location to see current openings.
         </p>
       </div>
-      <div className="max-w-3xl mx-auto px-4 pb-8 sm:pb-10">
+      <div className="max-w-3xl mx-auto px-4 pb-6 sm:pb-10">
         <form
           method="get"
           action="/"
-          className="flex flex-col sm:flex-row gap-3"
+          className="flex flex-col sm:flex-row gap-2.5 sm:gap-3"
         >
           <LocationFilter
             groups={locations.groups}
