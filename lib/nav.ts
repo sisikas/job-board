@@ -2,7 +2,7 @@ export const MENU_LINKS = [
   {
     href: "/",
     label: "I'm looking for work",
-    icon: "chef" as const,
+    icon: "fork" as const,
   },
   {
     href: "/post",

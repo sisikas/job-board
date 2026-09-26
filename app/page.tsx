@@ -19,7 +19,7 @@ export default async function Home({
 
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--brand-cream)" }}>
-      <BoardHeader q={q} location={location} />
+      <BoardHeader q={q} location={location} showSearch />
 
       <main className="flex-1">
         <div className="max-w-3xl mx-auto px-4 pt-6 pb-6 sm:pt-8 sm:pb-8">

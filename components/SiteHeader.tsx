@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 import { MENU_LINKS } from "@/lib/nav";
 
 function isActive(pathname: string, href: string) {
@@ -9,10 +10,10 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavIcon({ name }: { name: "chef" | "shop" | "mail" }) {
+function NavIcon({ name }: { name: "fork" | "shop" | "mail" }) {
   const common = {
     viewBox: "0 0 24 24",
-    className: "w-5 h-5 sm:w-6 sm:h-6 shrink-0",
+    className: "w-5 h-5 shrink-0",
     fill: "none",
     stroke: "currentColor",
     strokeWidth: "1.8",
@@ -21,12 +22,14 @@ function NavIcon({ name }: { name: "chef" | "shop" | "mail" }) {
     "aria-hidden": true,
   };
 
-  if (name === "chef") {
+  if (name === "fork") {
     return (
       <svg {...common}>
-        <path d="M8 14c0-3-1.5-5-1.5-7a3.5 3.5 0 0 1 7 0c0 2-1.5 4-1.5 7" />
-        <path d="M7 14h10v2a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-2z" />
-        <path d="M6 20h12" />
+        <path d="M8 3v7" />
+        <path d="M12 3v7" />
+        <path d="M16 3v7" />
+        <path d="M8 10c0 2.4 1.8 4 4 4s4-1.6 4-4" />
+        <path d="M12 14v7" />
       </svg>
     );
   }
@@ -49,24 +52,49 @@ function NavIcon({ name }: { name: "chef" | "shop" | "mail" }) {
   );
 }
 
-export function SiteHeader() {
+export function SiteHeader({ search }: { search?: ReactNode }) {
   const pathname = usePathname();
 
   return (
     <div>
-      <div className="max-w-3xl mx-auto px-4 pt-6 sm:pt-12 flex flex-col items-center">
+      <div className="max-w-3xl mx-auto px-4 pt-6 md:pt-12 flex flex-col items-center">
         <Link href="/">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.png"
             alt="The Good Sort"
-            className="w-24 sm:w-32 h-auto"
+            className="w-24 md:w-32 h-auto"
           />
         </Link>
       </div>
-      <nav className="mt-5 sm:mt-8 px-4 sm:flex sm:justify-center" aria-label="Main">
+
+      <nav
+        className="mt-4 px-4 flex flex-col items-center gap-2.5 md:hidden"
+        aria-label="Main"
+      >
+        {MENU_LINKS.map((link) => {
+          const active = isActive(pathname, link.href);
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-[15px] font-semibold"
+              style={{
+                color: active ? "var(--brand-logo-green)" : "var(--brand-muted)",
+                textDecoration: active ? "underline" : "none",
+                textUnderlineOffset: "6px",
+                textDecorationThickness: "2px",
+              }}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <nav className="hidden md:block mt-8 max-w-3xl mx-auto px-4" aria-label="Main">
         <div
-          className="flex w-full max-w-md mx-auto flex-col gap-1 rounded-2xl p-1 sm:w-auto sm:max-w-none sm:flex-row sm:rounded-full"
+          className="flex w-full rounded-full p-1"
           style={{ background: "var(--brand-card)" }}
         >
           {MENU_LINKS.map((link) => {
@@ -75,7 +103,7 @@ export function SiteHeader() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="inline-flex w-full items-center gap-2.5 rounded-xl px-4 py-3 text-[15px] font-semibold sm:w-auto sm:rounded-full sm:px-6 sm:py-2.5 sm:text-lg whitespace-nowrap transition-colors"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-base font-semibold whitespace-nowrap transition-colors"
                 style={{
                   color: active ? "#fff" : "var(--brand-muted)",
                   background: active ? "var(--brand-logo-green)" : "transparent",
@@ -88,6 +116,12 @@ export function SiteHeader() {
           })}
         </div>
       </nav>
+
+      {search && (
+        <div className="mt-5 md:mt-8 pb-6 md:pb-10 max-w-3xl mx-auto px-4">
+          {search}
+        </div>
+      )}
     </div>
   );
 }

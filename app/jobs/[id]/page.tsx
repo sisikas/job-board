@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { getJob, getSimilarJobs, getApplyInfo, getInstagramHref } from "@/lib/jobs";
 import { formatDate } from "@/lib/format";
 import { ApplyButton } from "@/components/ApplyButton";
-import { BoardHeader } from "@/components/BoardHeader";
+import { SiteHeader } from "@/components/SiteHeader";
 import { InstagramLink } from "@/components/InstagramLink";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +51,7 @@ export default async function JobDetail({
 
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--brand-cream)" }}>
-      <BoardHeader />
+      <SiteHeader />
 
       <main className="flex-1">
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
