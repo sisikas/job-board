@@ -69,7 +69,7 @@ export function SiteHeader({ search }: { search?: ReactNode }) {
       </div>
 
       <nav
-        className="mt-4 px-4 flex flex-col items-center gap-2.5 md:hidden"
+        className="mt-4 px-4 flex justify-center gap-x-4 md:hidden"
         aria-label="Main"
       >
         {MENU_LINKS.map((link) => {
@@ -78,11 +78,11 @@ export function SiteHeader({ search }: { search?: ReactNode }) {
             <Link
               key={link.href}
               href={link.href}
-              className="text-[15px] font-semibold"
+              className="text-[13px] font-semibold text-center"
               style={{
                 color: active ? "var(--brand-logo-green)" : "var(--brand-muted)",
                 textDecoration: active ? "underline" : "none",
-                textUnderlineOffset: "6px",
+                textUnderlineOffset: "5px",
                 textDecorationThickness: "2px",
               }}
             >

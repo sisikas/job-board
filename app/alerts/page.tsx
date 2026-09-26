@@ -1,7 +1,7 @@
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata = {
-  title: "Keep me posted — The Good Sort",
+  title: "Get jobs first — The Good Sort",
   description: "Email alerts aren’t live yet. Follow The Good Sort on Instagram so you don’t miss new openings.",
 };
 

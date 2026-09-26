@@ -5,13 +5,13 @@ export const MENU_LINKS = [
     icon: "fork" as const,
   },
   {
+    href: "/alerts",
+    label: "Get jobs first",
+    icon: "mail" as const,
+  },
+  {
     href: "/post",
     label: "I'm hiring",
     icon: "shop" as const,
-  },
-  {
-    href: "/alerts",
-    label: "Keep me posted",
-    icon: "mail" as const,
   },
 ] as const;
