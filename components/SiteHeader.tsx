@@ -69,7 +69,7 @@ export function SiteHeader({ search }: { search?: ReactNode }) {
       </div>
 
       <nav
-        className="mt-4 px-4 flex justify-center gap-x-4 md:hidden"
+        className="mt-4 px-4 flex justify-center gap-x-3 md:hidden"
         aria-label="Main"
       >
         {MENU_LINKS.map((link) => {
@@ -78,7 +78,7 @@ export function SiteHeader({ search }: { search?: ReactNode }) {
             <Link
               key={link.href}
               href={link.href}
-              className="text-[13px] font-semibold text-center"
+              className="flex-1 text-[13px] font-semibold text-center leading-tight"
               style={{
                 color: active ? "var(--brand-logo-green)" : "var(--brand-muted)",
                 textDecoration: active ? "underline" : "none",
@@ -103,7 +103,7 @@ export function SiteHeader({ search }: { search?: ReactNode }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-2.5 text-base font-semibold whitespace-nowrap transition-colors"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm lg:text-base font-semibold text-center leading-tight transition-colors"
                 style={{
                   color: active ? "#fff" : "var(--brand-muted)",
                   background: active ? "var(--brand-logo-green)" : "transparent",

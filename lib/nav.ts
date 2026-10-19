@@ -6,7 +6,7 @@ export const MENU_LINKS = [
   },
   {
     href: "/alerts",
-    label: "Get jobs first",
+    label: "Tell me when the right job lands",
     icon: "mail" as const,
   },
   {
