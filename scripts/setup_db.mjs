@@ -79,6 +79,24 @@ async function main() {
   `;
   console.log("✔ Table `jobs` is ready.");
 
+  // Keep in sync with ensureTables() in lib/users.ts.
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id            text PRIMARY KEY,
+      email         text NOT NULL UNIQUE,
+      password_hash text NOT NULL,
+      created_at    timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS sessions (
+      token_hash text PRIMARY KEY,
+      user_id    text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at timestamptz NOT NULL
+    )
+  `;
+  console.log("✔ Tables `users` and `sessions` are ready.");
+
   const dataFile = path.join(projectRoot, "data", "jobs.json");
   if (!fs.existsSync(dataFile)) {
     console.log("• No data/jobs.json found — nothing to import. Table is empty and ready.");

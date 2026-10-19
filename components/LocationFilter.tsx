@@ -8,9 +8,11 @@ type Suggestion = { name: string; kind: "country" | "city" };
 export function LocationFilter({
   groups,
   defaultValue = "",
+  fullWidth = false,
 }: {
   groups: LocationGroup[];
   defaultValue?: string;
+  fullWidth?: boolean;
 }) {
   const [value, setValue] = useState(defaultValue);
   const [open, setOpen] = useState(false);
@@ -86,7 +88,7 @@ export function LocationFilter({
   }
 
   return (
-    <div className="relative sm:w-56">
+    <div className={fullWidth ? "relative w-full" : "relative sm:w-56"}>
       <input
         ref={inputRef}
         type="text"
