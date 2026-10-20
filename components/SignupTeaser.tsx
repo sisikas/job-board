@@ -2,7 +2,7 @@
 
 import { openAuth } from "@/components/AuthModal";
 
-export function SignupTeaser({ hiddenCount }: { hiddenCount: number }) {
+export function SignupTeaser({ hiddenCount, next }: { hiddenCount: number; next: string }) {
   return (
     <div
       className="flex h-full flex-col justify-center rounded-2xl border-2 border-dashed p-5 text-center"
@@ -19,7 +19,7 @@ export function SignupTeaser({ hiddenCount }: { hiddenCount: number }) {
       <div className="mt-4 flex flex-col items-center gap-2">
         <button
           type="button"
-          onClick={() => openAuth("/")}
+          onClick={() => openAuth(next)}
           className="rounded-full px-5 py-2 text-sm font-bold text-white"
           style={{ background: "var(--brand-logo-green)" }}
         >
@@ -27,7 +27,7 @@ export function SignupTeaser({ hiddenCount }: { hiddenCount: number }) {
         </button>
         <button
           type="button"
-          onClick={() => openAuth("/", "login")}
+          onClick={() => openAuth(next, "login")}
           className="text-sm font-semibold underline underline-offset-2"
           style={{ color: "var(--brand-muted)" }}
         >

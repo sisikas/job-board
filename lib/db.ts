@@ -32,7 +32,13 @@ export function getSql(): Sql {
           "Settings → Environment Variables) for production."
       );
     }
-    sqlClient = postgres(connectionString, { prepare: false });
+    // Neon drops idle connections, so close ours first instead of reusing a
+    // dead one (which surfaces as ECONNRESET on the next query).
+    sqlClient = postgres(connectionString, {
+      prepare: false,
+      idle_timeout: 20,
+      max_lifetime: 60 * 5,
+    });
     if (process.env.NODE_ENV !== "production") {
       globalForSql._sql = sqlClient;
     }

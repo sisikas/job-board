@@ -151,7 +151,7 @@ function AuthForm({
           className="mt-1 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
           style={{ background: "var(--brand-logo-green)" }}
         >
-          {pending ? "One moment…" : isSignup ? "Sign up" : "Log in"}
+          {pending ? "One moment…" : isSignup ? "Create account" : "Log in"}
         </button>
       </form>
 
@@ -163,7 +163,7 @@ function AuthForm({
           className="font-bold underline underline-offset-2"
           style={{ color: "var(--brand-logo-green)" }}
         >
-          {isSignup ? "Log in" : "Sign up"}
+          {isSignup ? "Log in" : "Create account"}
         </button>
       </p>
     </>

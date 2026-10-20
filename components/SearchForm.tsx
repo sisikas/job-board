@@ -1,24 +1,21 @@
 import { getLocations } from "@/lib/jobs";
 import { LocationFilter } from "@/components/LocationFilter";
-import { GatedSearchForm } from "@/components/GatedSearchForm";
 
 export async function SearchForm({
   q = "",
   location = "",
   stacked = false,
-  locked = false,
 }: {
   q?: string;
   location?: string;
   stacked?: boolean;
-  /** Logged-out visitors get the sign-up prompt instead of results. */
-  locked?: boolean;
 }) {
   const locations = await getLocations();
 
   return (
-    <GatedSearchForm
-      locked={locked}
+    <form
+      method="get"
+      action="/"
       className={stacked ? "flex flex-col gap-3" : "flex flex-col sm:flex-row gap-2.5 sm:gap-3"}
     >
       <LocationFilter
@@ -51,6 +48,6 @@ export async function SearchForm({
       >
         Search
       </button>
-    </GatedSearchForm>
+    </form>
   );
 }

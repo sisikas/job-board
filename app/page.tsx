@@ -7,7 +7,9 @@ import { InstagramLink } from "@/components/InstagramLink";
 
 export const dynamic = "force-dynamic";
 
+// How many jobs logged-out visitors see before the sign-up blur.
 const PREVIEW_COUNT = 6;
+const SEARCH_PREVIEW_COUNT = 2;
 
 export default async function Home({
   searchParams,
@@ -17,11 +19,12 @@ export default async function Home({
   const params = await searchParams;
   const user = await getCurrentUser();
   const signedIn = !!user;
-  const q = signedIn ? params.q || "" : "";
-  const location = signedIn ? params.location || "" : "";
+  const q = params.q || "";
+  const location = params.location || "";
 
   const jobs = await searchJobs({ q, location });
-  const visibleJobs = signedIn ? jobs : jobs.slice(0, PREVIEW_COUNT);
+  const previewCount = q || location ? SEARCH_PREVIEW_COUNT : PREVIEW_COUNT;
+  const visibleJobs = signedIn ? jobs : jobs.slice(0, previewCount);
 
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--brand-cream)" }}>
@@ -32,8 +35,8 @@ export default async function Home({
         q={q}
         location={location}
         hiddenCount={signedIn ? undefined : jobs.length - visibleJobs.length}
-        searchRow={<SearchForm q={q} location={location} locked={!signedIn} />}
-        searchStacked={<SearchForm q={q} location={location} stacked locked={!signedIn} />}
+        searchRow={<SearchForm q={q} location={location} />}
+        searchStacked={<SearchForm q={q} location={location} stacked />}
       />
 
       <footer>

@@ -194,6 +194,70 @@ function RowList({ jobs }: { jobs: Job[] }) {
   );
 }
 
+const bar = { background: "var(--brand-card-border)" };
+
+function PlaceholderCard() {
+  return (
+    <div className="flex flex-col rounded-2xl p-5" style={cardStyle}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="h-5 w-2/3 rounded-full" style={bar} />
+        <div className="h-3 w-14 rounded-full" style={bar} />
+      </div>
+      <div className="mt-3 h-3.5 w-1/2 rounded-full" style={bar} />
+      <div className="mt-2 h-3.5 w-2/5 rounded-full" style={{ background: "var(--brand-brick)", opacity: 0.35 }} />
+      <div className="mt-4 h-3 w-full rounded-full" style={bar} />
+      <div className="mt-2 h-3 w-4/5 rounded-full" style={bar} />
+      <div className="mt-5 h-4 w-24 rounded-full" style={{ background: "var(--brand-forest)", opacity: 0.4 }} />
+    </div>
+  );
+}
+
+function PlaceholderRow() {
+  return (
+    <div className="flex items-center gap-6 rounded-2xl px-5 py-4" style={cardStyle}>
+      <div className="min-w-0 flex-1">
+        <div className="h-5 w-1/3 rounded-full" style={bar} />
+        <div className="mt-2 h-3.5 w-1/2 rounded-full" style={bar} />
+        <div className="mt-2.5 h-3 w-4/5 rounded-full" style={bar} />
+      </div>
+      <div className="shrink-0 flex flex-col items-end gap-2">
+        <div className="h-3 w-14 rounded-full" style={bar} />
+        <div className="h-3.5 w-12 rounded-full" style={{ background: "var(--brand-forest)", opacity: 0.4 }} />
+      </div>
+    </div>
+  );
+}
+
+// Stand-in cards, not real jobs, so hidden postings never reach the page source.
+function LockedRows({
+  teaser,
+  className,
+  children,
+}: {
+  teaser: ReactNode;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="relative">
+      <div aria-hidden="true" className={`${className} blur-[3px] select-none pointer-events-none`}>
+        {children}
+      </div>
+      <div
+        className="absolute inset-0"
+        style={{ background: "linear-gradient(to bottom, transparent, var(--brand-cream))" }}
+      />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-2xl shadow-xl">{teaser}</div>
+      </div>
+    </div>
+  );
+}
+
+function repeat(count: number, render: (key: number) => ReactNode) {
+  return Array.from({ length: count }, (_, i) => render(i));
+}
+
 function HeroBoard({
   jobs,
   searchRow,
@@ -220,74 +284,31 @@ function HeroBoard({
         <h2 className="mb-4 text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
           Latest openings
         </h2>
-        {jobs.length === 0 && !teaser ? <EmptyState /> : <JobGrid jobs={jobs} />}
+        {jobs.length === 0 ? <EmptyState /> : <JobGrid jobs={jobs} />}
         {teaser && (
-          <LockedRows
-            teaser={teaser}
-            className="mt-4 grid grid-cols-2 lg:grid-cols-3 gap-4"
-            placeholders={6}
-          />
+          <LockedRows teaser={teaser} className="mt-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
+            {repeat(6, (i) => <PlaceholderCard key={i} />)}
+          </LockedRows>
         )}
       </div>
     </>
   );
 }
 
-function PlaceholderCard() {
-  const bar = { background: "var(--brand-card-border)" };
-  return (
-    <div className="flex flex-col rounded-2xl p-5" style={cardStyle}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="h-5 w-2/3 rounded-full" style={bar} />
-        <div className="h-3 w-14 rounded-full" style={bar} />
-      </div>
-      <div className="mt-3 h-3.5 w-1/2 rounded-full" style={bar} />
-      <div className="mt-2 h-3.5 w-2/5 rounded-full" style={{ background: "var(--brand-brick)", opacity: 0.35 }} />
-      <div className="mt-4 h-3 w-full rounded-full" style={bar} />
-      <div className="mt-2 h-3 w-4/5 rounded-full" style={bar} />
-      <div className="mt-5 h-4 w-24 rounded-full" style={{ background: "var(--brand-forest)", opacity: 0.4 }} />
-    </div>
-  );
-}
-
-// Stand-in cards, not real jobs, so hidden postings never reach the page source.
-function LockedRows({
-  teaser,
-  className,
-  placeholders,
-}: {
-  teaser: ReactNode;
-  className: string;
-  placeholders: number;
-}) {
-  return (
-    <div className="relative">
-      <div aria-hidden="true" className={`${className} blur-[3px] select-none pointer-events-none`}>
-        {Array.from({ length: placeholders }, (_, i) => (
-          <PlaceholderCard key={i} />
-        ))}
-      </div>
-      <div
-        className="absolute inset-0"
-        style={{ background: "linear-gradient(to bottom, transparent, var(--brand-cream))" }}
-      />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm rounded-2xl shadow-xl">{teaser}</div>
-      </div>
-    </div>
-  );
-}
-
 function SidebarBoard({
   jobs,
+  totalCount,
   q,
   location,
   searchStacked,
+  teaser,
 }: {
   jobs: Job[];
+  totalCount: number;
   q: string;
   location: string;
   searchStacked: ReactNode;
+  teaser: ReactNode;
 }) {
   return (
     <div className="max-w-6xl mx-auto px-6 pt-2 pb-8 grid grid-cols-[260px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)] gap-8 items-start">
@@ -298,8 +319,13 @@ function SidebarBoard({
         {searchStacked}
       </aside>
       <div>
-        <ResultsSummary count={jobs.length} q={q} location={location} />
+        <ResultsSummary count={totalCount} q={q} location={location} />
         {jobs.length === 0 ? <EmptyState /> : <RowList jobs={jobs} />}
+        {teaser && (
+          <LockedRows teaser={teaser} className="mt-2.5 flex flex-col gap-2.5">
+            {repeat(4, (i) => <PlaceholderRow key={i} />)}
+          </LockedRows>
+        )}
       </div>
     </div>
   );
@@ -307,7 +333,7 @@ function SidebarBoard({
 
 /**
  * `hiddenCount` is set for logged-out visitors: `jobs` is then just the
- * preview, and a sign-up card stands in for the rest.
+ * preview, and blurred stand-ins with a sign-up card cover the rest.
  */
 export function JobBoard({
   jobs,
@@ -315,7 +341,7 @@ export function JobBoard({
   location,
   searchRow,
   searchStacked,
-  hiddenCount,
+  hiddenCount = 0,
 }: {
   jobs: Job[];
   q: string;
@@ -324,25 +350,35 @@ export function JobBoard({
   searchStacked: ReactNode;
   hiddenCount?: number;
 }) {
-  const locked = hiddenCount !== undefined;
-  const searching = !locked && Boolean(q || location);
-  const teaser = locked ? <SignupTeaser hiddenCount={hiddenCount} /> : null;
+  const searching = Boolean(q || location);
+  const totalCount = jobs.length + hiddenCount;
+  const next = searching ? `/?${new URLSearchParams({ ...(location && { location }), ...(q && { q }) })}` : "/";
+  const teaser = hiddenCount > 0 ? <SignupTeaser hiddenCount={hiddenCount} next={next} /> : null;
 
   return (
     <main className="flex-1">
       <div className="md:hidden">
         <div className="mt-5 pb-6 max-w-3xl mx-auto px-4">{searchRow}</div>
         <div className="max-w-3xl mx-auto px-4 pt-6 pb-6">
-          <ResultsSummary count={jobs.length} q={q} location={location} />
-          {jobs.length === 0 && !teaser ? <EmptyState /> : <CardList jobs={jobs} />}
+          <ResultsSummary count={totalCount} q={q} location={location} />
+          {jobs.length === 0 ? <EmptyState /> : <CardList jobs={jobs} />}
           {teaser && (
-            <LockedRows teaser={teaser} className="mt-3 flex flex-col gap-3" placeholders={3} />
+            <LockedRows teaser={teaser} className="mt-3 flex flex-col gap-3">
+              {repeat(3, (i) => <PlaceholderCard key={i} />)}
+            </LockedRows>
           )}
         </div>
       </div>
       <div className="hidden md:block">
         {searching ? (
-          <SidebarBoard jobs={jobs} q={q} location={location} searchStacked={searchStacked} />
+          <SidebarBoard
+            jobs={jobs}
+            totalCount={totalCount}
+            q={q}
+            location={location}
+            searchStacked={searchStacked}
+            teaser={teaser}
+          />
         ) : (
           <HeroBoard jobs={jobs} searchRow={searchRow} teaser={teaser} />
         )}
