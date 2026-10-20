@@ -150,8 +150,7 @@ export default function AdminPage() {
     setJobs([]);
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleCreate() {
     setError("");
     if (!newJob.role || !newJob.venue || !newJob.city) {
       setError("Role, venue and city are required.");
@@ -340,7 +339,7 @@ export default function AdminPage() {
 
         {/* Add new posting */}
         <form
-          onSubmit={handleCreate}
+          onSubmit={(e) => e.preventDefault()}
           className="mb-8 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"
         >
           <h2 className="text-sm font-semibold text-neutral-900 mb-3">
@@ -444,7 +443,8 @@ export default function AdminPage() {
             />
           </div>
           <button
-            type="submit"
+            type="button"
+            onClick={handleCreate}
             className="mt-3 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
           >
             Add posting
