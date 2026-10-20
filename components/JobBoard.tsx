@@ -113,9 +113,9 @@ function CardList({ jobs }: { jobs: Job[] }) {
   );
 }
 
-function JobGrid({ jobs }: { jobs: Job[] }) {
+function JobGrid({ jobs, twoColumns }: { jobs: Job[]; twoColumns?: boolean }) {
   return (
-    <ul className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+    <ul className={`grid grid-cols-2 gap-4 ${twoColumns ? "" : "lg:grid-cols-3"}`}>
       {jobs.map((job) => (
         <li key={job.id}>
           <Link
@@ -260,10 +260,12 @@ function repeat(count: number, render: (key: number) => ReactNode) {
 
 function HeroBoard({
   jobs,
+  signedIn,
   searchRow,
   teaser,
 }: {
   jobs: Job[];
+  signedIn: boolean;
   searchRow: ReactNode;
   teaser: ReactNode;
 }) {
@@ -272,7 +274,7 @@ function HeroBoard({
       <section className="max-w-6xl mx-auto px-6 pb-10">
         <div className="rounded-3xl px-10 py-14 text-center" style={cardStyle}>
           <h1 className="text-4xl lg:text-5xl font-bold tracking-tight" style={{ color: "var(--brand-ink)" }}>
-            Find your next kitchen job.
+            Culinary jobs in incredible places
           </h1>
           <p className="mt-3 text-base" style={{ color: "var(--brand-muted)" }}>
             Search by role or location to see current openings.
@@ -284,7 +286,7 @@ function HeroBoard({
         <h2 className="mb-4 text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
           Latest openings
         </h2>
-        {jobs.length === 0 ? <EmptyState /> : <JobGrid jobs={jobs} />}
+        {jobs.length === 0 ? <EmptyState /> : <JobGrid jobs={jobs} twoColumns={signedIn} />}
         {teaser && (
           <LockedRows teaser={teaser} className="mt-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
             {repeat(6, (i) => <PlaceholderCard key={i} />)}
@@ -332,8 +334,9 @@ function SidebarBoard({
 }
 
 /**
- * `hiddenCount` is set for logged-out visitors: `jobs` is then just the
- * preview, and blurred stand-ins with a sign-up card cover the rest.
+ * For logged-out visitors `jobs` is just the preview: `hiddenCount` is how many
+ * search results were held back, and `teaserCount` is the number on the
+ * sign-up card shown over blurred stand-ins (0 hides the card).
  */
 export function JobBoard({
   jobs,
@@ -341,19 +344,23 @@ export function JobBoard({
   location,
   searchRow,
   searchStacked,
+  signedIn,
   hiddenCount = 0,
+  teaserCount = 0,
 }: {
   jobs: Job[];
+  signedIn: boolean;
   q: string;
   location: string;
   searchRow: ReactNode;
   searchStacked: ReactNode;
   hiddenCount?: number;
+  teaserCount?: number;
 }) {
   const searching = Boolean(q || location);
   const totalCount = jobs.length + hiddenCount;
   const next = searching ? `/?${new URLSearchParams({ ...(location && { location }), ...(q && { q }) })}` : "/";
-  const teaser = hiddenCount > 0 ? <SignupTeaser hiddenCount={hiddenCount} next={next} /> : null;
+  const teaser = teaserCount > 0 ? <SignupTeaser hiddenCount={teaserCount} next={next} /> : null;
 
   return (
     <main className="flex-1">
@@ -380,7 +387,7 @@ export function JobBoard({
             teaser={teaser}
           />
         ) : (
-          <HeroBoard jobs={jobs} searchRow={searchRow} teaser={teaser} />
+          <HeroBoard jobs={jobs} signedIn={signedIn} searchRow={searchRow} teaser={teaser} />
         )}
       </div>
     </main>

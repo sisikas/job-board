@@ -22,9 +22,18 @@ export default async function Home({
   const q = params.q || "";
   const location = params.location || "";
 
+  const searching = Boolean(q || location);
   const jobs = await searchJobs({ q, location });
-  const previewCount = q || location ? SEARCH_PREVIEW_COUNT : PREVIEW_COUNT;
+  const previewCount = searching ? SEARCH_PREVIEW_COUNT : PREVIEW_COUNT;
   const visibleJobs = signedIn ? jobs : jobs.slice(0, previewCount);
+  const hiddenCount = jobs.length - visibleJobs.length;
+
+  // A search with only a result or two still gets the sign-up card, counting
+  // the rest of the board instead.
+  let teaserCount = signedIn ? 0 : hiddenCount;
+  if (!signedIn && searching && hiddenCount === 0) {
+    teaserCount = (await searchJobs({})).length - jobs.length;
+  }
 
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--brand-cream)" }}>
@@ -34,7 +43,9 @@ export default async function Home({
         jobs={visibleJobs}
         q={q}
         location={location}
-        hiddenCount={signedIn ? undefined : jobs.length - visibleJobs.length}
+        signedIn={signedIn}
+        hiddenCount={signedIn ? undefined : hiddenCount}
+        teaserCount={teaserCount}
         searchRow={<SearchForm q={q} location={location} />}
         searchStacked={<SearchForm q={q} location={location} stacked />}
       />
