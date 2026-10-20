@@ -194,6 +194,8 @@ function RowList({ jobs }: { jobs: Job[] }) {
   );
 }
 
+const MOBILE_PREVIEW_COUNT = 3;
+
 const bar = { background: "var(--brand-card-border)" };
 
 function PlaceholderCard() {
@@ -232,10 +234,12 @@ function PlaceholderRow() {
 function LockedRows({
   teaser,
   className,
+  teaserPosition = "items-center",
   children,
 }: {
   teaser: ReactNode;
   className: string;
+  teaserPosition?: string;
   children: ReactNode;
 }) {
   return (
@@ -247,7 +251,7 @@ function LockedRows({
         className="absolute inset-0"
         style={{ background: "linear-gradient(to bottom, transparent, var(--brand-cream))" }}
       />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
+      <div className={`absolute inset-0 flex justify-center p-4 ${teaserPosition}`}>
         <div className="w-full max-w-sm rounded-2xl shadow-xl">{teaser}</div>
       </div>
     </div>
@@ -362,15 +366,25 @@ export function JobBoard({
   const next = searching ? `/?${new URLSearchParams({ ...(location && { location }), ...(q && { q }) })}` : "/";
   const teaser = teaserCount > 0 ? <SignupTeaser hiddenCount={teaserCount} next={next} /> : null;
 
+  // Phones get a shorter logged-out preview so the sign-up card shows sooner.
+  const mobileJobs = !signedIn && !searching ? jobs.slice(0, MOBILE_PREVIEW_COUNT) : jobs;
+  const mobileTeaserCount = teaserCount + jobs.length - mobileJobs.length;
+  const mobileTeaser =
+    mobileTeaserCount > 0 ? <SignupTeaser hiddenCount={mobileTeaserCount} next={next} /> : null;
+
   return (
     <main className="flex-1">
       <div className="md:hidden">
         <div className="mt-5 pb-6 max-w-3xl mx-auto px-4">{searchRow}</div>
         <div className="max-w-3xl mx-auto px-4 pt-6 pb-6">
           <ResultsSummary count={totalCount} q={q} location={location} />
-          {jobs.length === 0 ? <EmptyState /> : <CardList jobs={jobs} />}
-          {teaser && (
-            <LockedRows teaser={teaser} className="mt-3 flex flex-col gap-3">
+          {mobileJobs.length === 0 ? <EmptyState /> : <CardList jobs={mobileJobs} />}
+          {mobileTeaser && (
+            <LockedRows
+              teaser={mobileTeaser}
+              className="mt-3 flex flex-col gap-3"
+              teaserPosition="items-start pt-24"
+            >
               {repeat(3, (i) => <PlaceholderCard key={i} />)}
             </LockedRows>
           )}
