@@ -1,33 +1,32 @@
-/**
- * Outgoing email via Resend's HTTP API (https://resend.com/docs/api-reference).
- *
- *   RESEND_API_KEY  required to actually send
- *   EMAIL_FROM      e.g. "The Good Sort <hello@thegoodsort.com>"; the default
- *                   sandbox sender can only deliver to your own Resend address
- */
+import nodemailer, { type Transporter } from "nodemailer";
 
-const DEFAULT_FROM = "The Good Sort <onboarding@resend.dev>";
+/**
+ * Outgoing email through a Gmail account over SMTP.
+ *
+ *   GMAIL_USER          the sending address, e.g. thegoodsort.jobs@gmail.com
+ *   GMAIL_APP_PASSWORD  a Google "app password" (needs 2-Step Verification on
+ *                       the account); not the normal Gmail password
+ *
+ * Gmail caps sending at roughly 500 emails a day.
+ */
 
 type Email = { to: string; subject: string; text: string; html: string };
 
+let transporter: Transporter | undefined;
+
 async function sendEmail(email: Email): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, "");
+  if (!user || !pass) {
     if (process.env.NODE_ENV !== "production") {
-      console.log(`\n[email] RESEND_API_KEY not set — would send to ${email.to}:\n${email.text}\n`);
+      console.log(`\n[email] GMAIL_USER / GMAIL_APP_PASSWORD not set — would send to ${email.to}:\n${email.text}\n`);
       return;
     }
-    throw new Error("RESEND_API_KEY is not set");
+    throw new Error("GMAIL_USER and GMAIL_APP_PASSWORD must be set");
   }
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.EMAIL_FROM || DEFAULT_FROM, ...email }),
-  });
-  if (!res.ok) {
-    throw new Error(`Resend responded ${res.status}: ${await res.text()}`);
-  }
+  transporter ??= nodemailer.createTransport({ service: "gmail", auth: { user, pass } });
+  await transporter.sendMail({ from: `The Good Sort <${user}>`, ...email });
 }
 
 export async function sendPasswordResetEmail(to: string, link: string): Promise<void> {
