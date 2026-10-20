@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Job } from "@/lib/jobs";
 import { todayISODate } from "@/lib/format";
@@ -313,12 +314,20 @@ export default function AdminPage() {
               the public page immediately.
             </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
-          >
-            Log out
-          </button>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/signups"
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
+            >
+              Sign-ups
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
+            >
+              Log out
+            </button>
+          </div>
         </div>
       </header>
 

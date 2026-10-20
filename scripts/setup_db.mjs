@@ -95,7 +95,15 @@ async function main() {
       expires_at timestamptz NOT NULL
     )
   `;
-  console.log("✔ Tables `users` and `sessions` are ready.");
+  await sql`
+    CREATE TABLE IF NOT EXISTS password_resets (
+      token_hash text PRIMARY KEY,
+      user_id    text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      expires_at timestamptz NOT NULL
+    )
+  `;
+  console.log("✔ Tables `users`, `sessions` and `password_resets` are ready.");
 
   const dataFile = path.join(projectRoot, "data", "jobs.json");
   if (!fs.existsSync(dataFile)) {

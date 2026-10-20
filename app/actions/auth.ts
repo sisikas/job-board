@@ -1,9 +1,18 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createUser, endSession, startSession, verifyUser } from "@/lib/users";
+import { sendPasswordResetEmail } from "@/lib/email";
+import {
+  createPasswordReset,
+  createUser,
+  endSession,
+  resetPassword,
+  startSession,
+  verifyUser,
+} from "@/lib/users";
 
-export type AuthState = { error?: string; email?: string } | undefined;
+export type AuthState = { error?: string; email?: string; sent?: boolean } | undefined;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -53,6 +62,62 @@ export async function login(_prev: AuthState, formData: FormData): Promise<AuthS
 
   await startSession(user.id);
   redirect(safeNext(formData.get("next")));
+}
+
+async function siteUrl(): Promise<string> {
+  if (process.env.SITE_URL) return process.env.SITE_URL.replace(/\/$/, "");
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+// Always answers "sent", whether or not the account exists, so the form can't
+// be used to find out who has signed up.
+export async function requestPasswordReset(
+  _prev: AuthState,
+  formData: FormData
+): Promise<AuthState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!EMAIL_PATTERN.test(email)) {
+    return { error: "Please enter a valid email address.", email };
+  }
+
+  const reset = await createPasswordReset(email);
+  if (reset) {
+    const link = `${await siteUrl()}/reset-password?token=${encodeURIComponent(reset.token)}`;
+    try {
+      await sendPasswordResetEmail(reset.email, link);
+    } catch (err) {
+      console.error("Password reset email failed:", err);
+      return { error: "We couldn't send the email right now. Please try again in a few minutes.", email };
+    }
+  }
+  return { sent: true, email };
+}
+
+export async function completePasswordReset(
+  _prev: AuthState,
+  formData: FormData
+): Promise<AuthState> {
+  const token = String(formData.get("token") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: `Your password needs at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  if (password !== confirm) {
+    return { error: "The two passwords don't match." };
+  }
+
+  const user = await resetPassword(token, password);
+  if (!user) {
+    return { error: "This reset link has expired or was already used. Please ask for a new one." };
+  }
+
+  await startSession(user.id);
+  redirect("/");
 }
 
 export async function logout(): Promise<void> {

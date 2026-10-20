@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { login, signup, type AuthState } from "@/app/actions/auth";
+import { login, requestPasswordReset, signup, type AuthState } from "@/app/actions/auth";
 
-type Mode = "signup" | "login";
+type Mode = "signup" | "login" | "forgot";
 
 const OPEN_EVENT = "tgs-open-auth";
 
@@ -47,15 +47,145 @@ export function AuthModal() {
         style={{ background: "var(--brand-card)", border: "1px solid var(--brand-card-border)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <AuthForm
-          key={request.mode}
-          mode={request.mode}
-          next={request.next}
-          onSwitch={(mode) => setRequest({ ...request, mode })}
-          onClose={() => setRequest(null)}
-        />
+        {request.mode === "forgot" ? (
+          <ForgotForm
+            onSwitch={(mode) => setRequest({ ...request, mode })}
+            onClose={() => setRequest(null)}
+          />
+        ) : (
+          <AuthForm
+            key={request.mode}
+            mode={request.mode}
+            next={request.next}
+            onSwitch={(mode) => setRequest({ ...request, mode })}
+            onClose={() => setRequest(null)}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+const inputClass = "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2";
+const inputStyle = {
+  background: "var(--brand-cream)",
+  border: "1px solid var(--brand-input-border)",
+  color: "var(--brand-ink)",
+};
+
+function FormHeader({
+  title,
+  subtitle,
+  onClose,
+}: {
+  title: string;
+  subtitle: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h2 id="auth-title" className="text-xl font-bold" style={{ color: "var(--brand-ink)" }}>
+          {title}
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: "var(--brand-muted)" }}>
+          {subtitle}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="shrink-0 text-xl leading-none"
+        style={{ color: "var(--brand-muted)" }}
+      >
+        &times;
+      </button>
+    </div>
+  );
+}
+
+function ForgotForm({
+  onSwitch,
+  onClose,
+}: {
+  onSwitch: (mode: Mode) => void;
+  onClose: () => void;
+}) {
+  const [state, action, pending] = useActionState<AuthState, FormData>(
+    requestPasswordReset,
+    undefined
+  );
+
+  const backToLogin = (
+    <p className="mt-4 text-center text-sm" style={{ color: "var(--brand-muted)" }}>
+      <button
+        type="button"
+        onClick={() => onSwitch("login")}
+        className="font-bold underline underline-offset-2"
+        style={{ color: "var(--brand-logo-green)" }}
+      >
+        Back to log in
+      </button>
+    </p>
+  );
+
+  if (state?.sent) {
+    return (
+      <>
+        <FormHeader
+          title="Check your inbox"
+          subtitle={`If ${state.email} has an account, we've sent it a link to choose a new password. The link works for 1 hour.`}
+          onClose={onClose}
+        />
+        <p className="mt-4 text-xs" style={{ color: "var(--brand-date)" }}>
+          Nothing there after a few minutes? Check your spam folder.
+        </p>
+        {backToLogin}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <FormHeader
+        title="Forgot your password?"
+        subtitle="Enter your email and we'll send you a link to choose a new one."
+        onClose={onClose}
+      />
+
+      <form action={action} className="mt-5 flex flex-col gap-3">
+        <label className="flex flex-col gap-1 text-sm font-semibold" style={{ color: "var(--brand-ink)" }}>
+          Email
+          <input
+            type="email"
+            name="email"
+            required
+            autoComplete="email"
+            defaultValue={state?.email}
+            className={inputClass}
+            style={inputStyle}
+          />
+        </label>
+
+        {state?.error && (
+          <p role="alert" className="text-sm font-semibold" style={{ color: "#b3412e" }}>
+            {state.error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="mt-1 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-opacity disabled:opacity-60"
+          style={{ background: "var(--brand-logo-green)" }}
+        >
+          {pending ? "One moment…" : "Send reset link"}
+        </button>
+      </form>
+
+      {backToLogin}
+    </>
   );
 }
 
@@ -65,7 +195,7 @@ function AuthForm({
   onSwitch,
   onClose,
 }: {
-  mode: Mode;
+  mode: "signup" | "login";
   next: string;
   onSwitch: (mode: Mode) => void;
   onClose: () => void;
@@ -76,36 +206,17 @@ function AuthForm({
   );
   const isSignup = mode === "signup";
 
-  const inputClass = "w-full rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2";
-  const inputStyle = {
-    background: "var(--brand-cream)",
-    border: "1px solid var(--brand-input-border)",
-    color: "var(--brand-ink)",
-  };
-
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 id="auth-title" className="text-xl font-bold" style={{ color: "var(--brand-ink)" }}>
-            {isSignup ? "See every open job" : "Welcome back"}
-          </h2>
-          <p className="mt-1 text-sm" style={{ color: "var(--brand-muted)" }}>
-            {isSignup
-              ? "Create a free account to browse and search all the roles."
-              : "Log in to browse and search all the roles."}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="shrink-0 text-xl leading-none"
-          style={{ color: "var(--brand-muted)" }}
-        >
-          &times;
-        </button>
-      </div>
+      <FormHeader
+        title={isSignup ? "See every open job" : "Welcome back"}
+        subtitle={
+          isSignup
+            ? "Create a free account to browse and search all the roles."
+            : "Log in to browse and search all the roles."
+        }
+        onClose={onClose}
+      />
 
       <form action={action} className="mt-5 flex flex-col gap-3">
         <input type="hidden" name="next" value={next} />
@@ -138,6 +249,16 @@ function AuthForm({
             </span>
           )}
         </label>
+        {!isSignup && (
+          <button
+            type="button"
+            onClick={() => onSwitch("forgot")}
+            className="-mt-1 self-end text-xs font-semibold underline underline-offset-2"
+            style={{ color: "var(--brand-logo-green)" }}
+          >
+            Forgot password?
+          </button>
+        )}
 
         {state?.error && (
           <p role="alert" className="text-sm font-semibold" style={{ color: "#b3412e" }}>
