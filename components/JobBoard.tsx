@@ -57,10 +57,10 @@ function EmptyState() {
       style={{ borderColor: "var(--brand-input-border)", background: "var(--brand-card)" }}
     >
       <p className="text-sm" style={{ color: "var(--brand-muted)" }}>
-        No open positions match your search right now.
+        No roles here just yet.
       </p>
-      <p className="text-sm mt-1" style={{ color: "var(--brand-date)" }}>
-        Check back soon, or try a different term.
+      <p className="text-sm mt-1 font-bold" style={{ color: "var(--brand-logo-green)" }}>
+        Fresh roles drop daily. Pop back tomorrow or try a broader location!
       </p>
     </div>
   );
