@@ -42,6 +42,10 @@ export function CookieNotice() {
         style={{
           background: "var(--brand-card)",
           borderColor: "var(--brand-card-border)",
+          borderLeftWidth: 6,
+          borderLeftColor: "var(--brand-brick)",
+          borderBottomWidth: 4,
+          borderBottomColor: "var(--brand-brick)",
           boxShadow: "0 10px 30px rgba(33, 28, 20, 0.12)",
         }}
       >
