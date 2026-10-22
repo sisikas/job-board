@@ -160,6 +160,35 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
   });
 }
 
+const COUNTRY_ALIASES: Record<string, string[]> = {
+  GB: ["uk", "great britain", "england", "scotland", "wales", "northern ireland"],
+  US: ["usa", "us", "united states of america"],
+};
+
+/**
+ * Latest openings only: up to `count` of the newest jobs in the visitor's
+ * country (Vercel sends an ISO code like "AU") move to the front. The rest
+ * stay in date order. If none match, the list is unchanged.
+ */
+export function putCountryFirst(jobs: Job[], countryCode: string | null, count = 3): Job[] {
+  const code = countryCode?.trim().toUpperCase();
+  if (!code || !/^[A-Z]{2}$/.test(code)) return jobs;
+
+  let name: string | undefined;
+  try {
+    name = new Intl.DisplayNames(["en"], { type: "region" }).of(code);
+  } catch {
+    return jobs;
+  }
+  // Unknown codes come back as the code itself ("XX"); treat those as no match.
+  if (!name || name.toUpperCase() === code) return jobs;
+
+  const names = new Set([name.toLowerCase(), ...(COUNTRY_ALIASES[code] ?? [])]);
+  const local = jobs.filter((job) => names.has(job.country.trim().toLowerCase())).slice(0, count);
+  if (local.length === 0) return jobs;
+  return [...local, ...jobs.filter((job) => !local.includes(job))];
+}
+
 /**
  * Locations grouped country → cities so the filter can list countries first,
  * with each country's cities nested underneath.
