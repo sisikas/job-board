@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { AuthModal } from "@/components/AuthModal";
+import { CookieNotice } from "@/components/CookieNotice";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <AuthModal />
+        <CookieNotice />
       </body>
       <Script id="microsoft-clarity" strategy="afterInteractive">
         {`
@@ -43,6 +45,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
           })(window, document, "clarity", "script", "y5tss9t4xg");
+          try {
+            if (localStorage.getItem("tgs_cookie_consent") === "granted") {
+              window.clarity("consentv2", { ad_Storage: "granted", analytics_Storage: "granted" });
+              window.clarity("consent", true);
+            }
+          } catch (e) {}
         `}
       </Script>
     </html>
