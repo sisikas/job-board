@@ -3,11 +3,15 @@ import { LocationFilter } from "@/components/LocationFilter";
 
 export async function SearchForm({
   q = "",
-  location = "",
+  placeLabel = "",
+  city = "",
+  country = "",
   stacked = false,
 }: {
   q?: string;
-  location?: string;
+  placeLabel?: string;
+  city?: string;
+  country?: string;
   stacked?: boolean;
 }) {
   const locations = await getLocations();
@@ -20,15 +24,11 @@ export async function SearchForm({
     >
       <LocationFilter
         groups={locations.groups}
-        defaultValue={location}
+        placeLabel={placeLabel}
+        city={city}
+        country={country}
         fullWidth={stacked}
       />
-      <span
-        className="self-center text-sm font-bold"
-        style={{ color: "var(--brand-brick)" }}
-      >
-        OR
-      </span>
       <input
         type="text"
         name="q"

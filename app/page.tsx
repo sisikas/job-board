@@ -15,20 +15,33 @@ const SEARCH_PREVIEW_COUNT = 2;
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; location?: string }>;
+  searchParams: Promise<{ q?: string; location?: string; city?: string; country?: string }>;
 }) {
   const params = await searchParams;
   const user = await getCurrentUser();
   const signedIn = !!user;
   const q = params.q || "";
+  const city = params.city || "";
+  const country = params.country || "";
   const location = params.location || "";
+  const placeLabel = city && country ? `${city}, ${country}` : city || country || location;
+  const query = new URLSearchParams();
+  if (q) query.set("q", q);
+  if (city) query.set("city", city);
+  if (country) query.set("country", country);
+  if (!city && !country && location) query.set("location", location);
+  const returnTo = query.size > 0 ? `/?${query}` : "/";
 
-  const searching = Boolean(q || location);
-  const results = await searchJobs({ q, location });
+  const searching = Boolean(q || placeLabel);
+  const results = await searchJobs({
+    q,
+    city,
+    country,
+    location: city || country ? undefined : location,
+  });
   // Vercel sets this from the visitor's IP; it's only used for ordering, never stored.
-  const jobs = searching
-    ? results
-    : putCountryFirst(results, (await headers()).get("x-vercel-ip-country"));
+  const countryCode = (await headers()).get("x-vercel-ip-country");
+  const jobs = searching ? results : putCountryFirst(results, countryCode);
   const previewCount = searching ? SEARCH_PREVIEW_COUNT : PREVIEW_COUNT;
   const visibleJobs = signedIn ? jobs : jobs.slice(0, previewCount);
   const hiddenCount = jobs.length - visibleJobs.length;
@@ -47,12 +60,15 @@ export default async function Home({
       <JobBoard
         jobs={visibleJobs}
         q={q}
-        location={location}
+        location={placeLabel}
+        returnTo={returnTo}
         signedIn={signedIn}
         hiddenCount={signedIn ? undefined : hiddenCount}
         teaserCount={teaserCount}
-        searchRow={<SearchForm q={q} location={location} />}
-        searchStacked={<SearchForm q={q} location={location} stacked />}
+        searchRow={<SearchForm q={q} placeLabel={placeLabel} city={city} country={country} />}
+        searchStacked={
+          <SearchForm q={q} placeLabel={placeLabel} city={city} country={country} stacked />
+        }
       />
 
       <footer>

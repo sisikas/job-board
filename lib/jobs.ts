@@ -133,7 +133,9 @@ export async function getAllJobs(): Promise<Job[]> {
 
 export type JobFilters = {
   q?: string; // free-text search across role / venue / description
-  location?: string; // matches city or country, case-insensitive
+  location?: string; // typed text: matches city or country, case-insensitive
+  city?: string; // picked from the place list
+  country?: string;
 };
 
 export async function searchJobs(filters: JobFilters): Promise<Job[]> {
@@ -142,6 +144,8 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
   const jobs = await getAllJobs();
   const q = filters.q?.trim().toLowerCase();
   const location = filters.location?.trim().toLowerCase();
+  const city = filters.city?.trim().toLowerCase();
+  const country = filters.country?.trim().toLowerCase();
 
   return jobs.filter((job) => {
     if (job.status !== "open") return false;
@@ -151,7 +155,10 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
       if (!haystack.includes(q)) return false;
     }
 
-    if (location) {
+    if (city || country) {
+      if (city && job.city.trim().toLowerCase() !== city) return false;
+      if (country && job.country.trim().toLowerCase() !== country) return false;
+    } else if (location) {
       const jobLocation = `${job.city} ${job.country}`.toLowerCase();
       if (!jobLocation.includes(location)) return false;
     }
@@ -165,23 +172,28 @@ const COUNTRY_ALIASES: Record<string, string[]> = {
   US: ["usa", "us", "united states of america"],
 };
 
+/** English country name for a Vercel ISO code like "AU". Null if unknown. */
+export function countryNameFromCode(countryCode: string | null): string | null {
+  const code = countryCode?.trim().toUpperCase();
+  if (!code || !/^[A-Z]{2}$/.test(code)) return null;
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "region" }).of(code);
+    if (!name || name.toUpperCase() === code) return null;
+    return name;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Latest openings only: up to `count` of the newest jobs in the visitor's
  * country (Vercel sends an ISO code like "AU") move to the front. The rest
  * stay in date order. If none match, the list is unchanged.
  */
 export function putCountryFirst(jobs: Job[], countryCode: string | null, count = 3): Job[] {
-  const code = countryCode?.trim().toUpperCase();
-  if (!code || !/^[A-Z]{2}$/.test(code)) return jobs;
-
-  let name: string | undefined;
-  try {
-    name = new Intl.DisplayNames(["en"], { type: "region" }).of(code);
-  } catch {
-    return jobs;
-  }
-  // Unknown codes come back as the code itself ("XX"); treat those as no match.
-  if (!name || name.toUpperCase() === code) return jobs;
+  const name = countryNameFromCode(countryCode);
+  if (!name) return jobs;
+  const code = countryCode!.trim().toUpperCase();
 
   const names = new Set([name.toLowerCase(), ...(COUNTRY_ALIASES[code] ?? [])]);
   const local = jobs.filter((job) => names.has(job.country.trim().toLowerCase())).slice(0, count);

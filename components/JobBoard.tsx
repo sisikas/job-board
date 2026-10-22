@@ -346,6 +346,7 @@ export function JobBoard({
   jobs,
   q,
   location,
+  returnTo = "/",
   searchRow,
   searchStacked,
   signedIn,
@@ -356,6 +357,7 @@ export function JobBoard({
   signedIn: boolean;
   q: string;
   location: string;
+  returnTo?: string;
   searchRow: ReactNode;
   searchStacked: ReactNode;
   hiddenCount?: number;
@@ -363,7 +365,7 @@ export function JobBoard({
 }) {
   const searching = Boolean(q || location);
   const totalCount = jobs.length + hiddenCount;
-  const next = searching ? `/?${new URLSearchParams({ ...(location && { location }), ...(q && { q }) })}` : "/";
+  const next = searching ? returnTo : "/";
   const teaser = teaserCount > 0 ? <SignupTeaser hiddenCount={teaserCount} next={next} /> : null;
 
   // Phones get a shorter logged-out preview so the sign-up card shows sooner.
