@@ -50,7 +50,7 @@ export function CookieNotice() {
         }}
       >
         <p className="text-sm leading-snug" style={{ color: "var(--brand-body)" }}>
-          We use cookies to improve your experience.
+          We use cookies to make all users&apos; experience better.
         </p>
         <div className="flex shrink-0 gap-2">
           <button
