@@ -6,6 +6,7 @@ import { formatDate } from "@/lib/format";
 import { ApplyButton } from "@/components/ApplyButton";
 import { SiteHeader } from "@/components/SiteHeader";
 import { InstagramLink } from "@/components/InstagramLink";
+import { TrackJobView } from "@/components/GoogleAnalytics";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,7 @@ export default async function JobDetail({
 
   return (
     <div className="flex-1 flex flex-col" style={{ background: "var(--brand-cream)" }}>
+      <TrackJobView />
       <SiteHeader />
 
       <main className="flex-1">

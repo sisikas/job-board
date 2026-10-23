@@ -1,4 +1,5 @@
 export const CONSENT_KEY = "tgs_cookie_consent";
+export const CONSENT_CHANGE = "tgs-consent-change";
 
 export type ConsentChoice = "granted" | "denied";
 

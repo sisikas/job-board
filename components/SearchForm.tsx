@@ -1,5 +1,6 @@
 import { getLocations } from "@/lib/jobs";
 import { LocationFilter } from "@/components/LocationFilter";
+import { TrackSearchForm } from "@/components/GoogleAnalytics";
 
 export async function SearchForm({
   q = "",
@@ -17,7 +18,7 @@ export async function SearchForm({
   const locations = await getLocations();
 
   return (
-    <form
+    <TrackSearchForm
       method="get"
       action="/"
       className={stacked ? "flex flex-col gap-3" : "flex flex-col sm:flex-row gap-2.5 sm:gap-3"}
@@ -48,6 +49,6 @@ export async function SearchForm({
       >
         Search
       </button>
-    </form>
+    </TrackSearchForm>
   );
 }

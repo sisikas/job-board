@@ -1,17 +1,16 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { applyClarityConsent, CONSENT_KEY, type ConsentChoice } from "@/lib/clarity-consent";
+import { applyClarityConsent, CONSENT_CHANGE, CONSENT_KEY, type ConsentChoice } from "@/lib/clarity-consent";
 
 const PENDING = "pending";
-const CHANGE = "tgs-consent-change";
 
 function subscribe(onStoreChange: () => void) {
   window.addEventListener("storage", onStoreChange);
-  window.addEventListener(CHANGE, onStoreChange);
+  window.addEventListener(CONSENT_CHANGE, onStoreChange);
   return () => {
     window.removeEventListener("storage", onStoreChange);
-    window.removeEventListener(CHANGE, onStoreChange);
+    window.removeEventListener(CONSENT_CHANGE, onStoreChange);
   };
 }
 
@@ -26,7 +25,7 @@ function getServerSnapshot() {
 function choose(choice: ConsentChoice) {
   localStorage.setItem(CONSENT_KEY, choice);
   applyClarityConsent(choice);
-  window.dispatchEvent(new Event(CHANGE));
+  window.dispatchEvent(new Event(CONSENT_CHANGE));
 }
 
 export function CookieNotice() {

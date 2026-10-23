@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login, requestPasswordReset, signup, type AuthState } from "@/app/actions/auth";
 import { trackClaritySignup } from "@/lib/clarity-consent";
+import { trackGaEvent } from "@/lib/google-analytics";
 
 type Mode = "signup" | "login" | "forgot";
 
@@ -214,6 +215,7 @@ function AuthForm({
     if (!isSignup || !state?.signedUp || signupTracked.current) return;
     signupTracked.current = true;
     trackClaritySignup();
+    trackGaEvent("sign_up");
     router.push(state.next || "/");
     router.refresh();
   }, [isSignup, router, state]);

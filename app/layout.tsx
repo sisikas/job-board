@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { AuthModal } from "@/components/AuthModal";
 import { CookieNotice } from "@/components/CookieNotice";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {children}
         <AuthModal />
         <CookieNotice />
+        <GoogleAnalytics />
       </body>
       <Script id="microsoft-clarity" strategy="afterInteractive">
         {`
