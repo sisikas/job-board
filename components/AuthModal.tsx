@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { login, requestPasswordReset, signup, type AuthState } from "@/app/actions/auth";
+import { trackClaritySignup } from "@/lib/clarity-consent";
 
 type Mode = "signup" | "login" | "forgot";
 
@@ -205,6 +207,16 @@ function AuthForm({
     undefined
   );
   const isSignup = mode === "signup";
+  const router = useRouter();
+  const signupTracked = useRef(false);
+
+  useEffect(() => {
+    if (!isSignup || !state?.signedUp || signupTracked.current) return;
+    signupTracked.current = true;
+    trackClaritySignup();
+    router.push(state.next || "/");
+    router.refresh();
+  }, [isSignup, router, state]);
 
   return (
     <>

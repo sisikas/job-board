@@ -12,7 +12,9 @@ import {
   verifyUser,
 } from "@/lib/users";
 
-export type AuthState = { error?: string; email?: string; sent?: boolean } | undefined;
+export type AuthState =
+  | { error?: string; email?: string; sent?: boolean; signedUp?: boolean; next?: string }
+  | undefined;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
@@ -45,7 +47,7 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
   }
 
   await startSession(user.id);
-  redirect(safeNext(formData.get("next")));
+  return { signedUp: true, next: safeNext(formData.get("next")) };
 }
 
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {

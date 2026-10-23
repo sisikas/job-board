@@ -15,6 +15,10 @@ function clarityQueue(): ClarityFn {
   return w.clarity;
 }
 
+export function trackClaritySignup() {
+  clarityQueue()("event", "signup");
+}
+
 export function applyClarityConsent(choice: ConsentChoice) {
   const clarity = clarityQueue();
   const state = choice === "granted" ? "granted" : "denied";
