@@ -24,22 +24,32 @@ function formatTime(seconds: number) {
   return `${minutes}m ${rest}s`;
 }
 
+const PINK = "#e56b96";
+const PINK_DEEP = "#7a2e4a";
+const PINK_SOFT = "#fff7fa";
+const PINK_LINE = "#f3c6d4";
+const PINK_MUTED = "#a06a80";
+
 const BAR_COLORS = [
-  "#4082a1",
-  "#e07a3d",
-  "#63912f",
-  "#c43d6e",
-  "#6b4c9a",
-  "#d4a017",
-  "#2f6f6f",
-  "#c4523a",
-  "#3d5a99",
+  "#e56b96",
+  "#f0a36a",
+  "#c43d78",
+  "#f2b6c8",
+  "#8e4a78",
+  "#e8896a",
+  "#d4a0c0",
+  "#a33d5c",
+  "#f6d0a8",
 ];
 
 function Bars({ rows, total, empty }: { rows: NameCount[]; total: number; empty: string }) {
   const [hovered, setHovered] = useState<string | null>(null);
   if (rows.length === 0 || total === 0) {
-    return <p className="text-sm text-neutral-500">{empty}</p>;
+    return (
+      <p className="text-sm" style={{ color: PINK_MUTED }}>
+        {empty}
+      </p>
+    );
   }
   const bars = rows.map((row, index) => ({
     label: row.label,
@@ -67,14 +77,15 @@ function Bars({ rows, total, empty }: { rows: NameCount[]; total: number; empty:
           onBlur={() => setHovered(null)}
         >
           <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-            <span className="flex min-w-0 items-center gap-2 font-medium text-neutral-900">
+            <span className="flex min-w-0 items-center gap-2 font-medium" style={{ color: PINK_DEEP }}>
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: bar.color }} />
               {bar.label}
             </span>
-            <span className="text-neutral-500">{bar.percent}%</span>
+            <span style={{ color: PINK_MUTED }}>{bar.percent}%</span>
           </div>
           <div
-            className="h-3 rounded-full bg-neutral-100"
+            className="h-3 rounded-full"
+            style={{ background: "#fde8ef" }}
             role="img"
             aria-label={`${bar.label}, ${bar.percent}%`}
           >
@@ -84,7 +95,10 @@ function Bars({ rows, total, empty }: { rows: NameCount[]; total: number; empty:
             />
           </div>
           {hovered === bar.label && (
-            <p className="absolute left-0 top-full z-10 mt-1 rounded-md bg-neutral-900 px-2 py-1 text-xs text-white">
+            <p
+              className="absolute left-0 top-full z-10 mt-1 rounded-full px-2.5 py-1 text-xs text-white"
+              style={{ background: PINK_DEEP }}
+            >
               {bar.label}
             </p>
           )}
@@ -144,12 +158,16 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <label className="flex w-fit items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-900">
+      <label
+        className="flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium"
+        style={{ background: "white", color: PINK_DEEP, border: `1px solid ${PINK_LINE}` }}
+      >
         <input
           type="checkbox"
           checked={excludeGreece}
           onChange={(event) => setExcludeGreece(event.target.checked)}
-          className="h-4 w-4 accent-[var(--brand-brick)]"
+          className="h-4 w-4"
+          style={{ accentColor: PINK }}
         />
         Exclude Greece
       </label>
@@ -164,18 +182,18 @@ export function AnalyticsDashboard() {
               key={days}
               type="button"
               onClick={() => applyPreset(Number(days))}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+              className="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
               style={
                 preset === days
-                  ? { background: "var(--brand-brick)", color: "white" }
-                  : { background: "white", color: "#404040", border: "1px solid #d4d4d4" }
+                  ? { background: PINK, color: "white" }
+                  : { background: "white", color: PINK_DEEP, border: `1px solid ${PINK_LINE}` }
               }
             >
               {label}
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-600">
+        <div className="flex flex-wrap items-center gap-2 text-sm" style={{ color: PINK_MUTED }}>
           <label className="flex items-center gap-2">
             From
             <input
@@ -186,7 +204,8 @@ export function AnalyticsDashboard() {
                 setPreset(null);
                 setStart(event.target.value);
               }}
-              className="rounded-lg border border-neutral-300 bg-white px-2 py-1.5"
+              className="rounded-full bg-white px-3 py-1.5"
+              style={{ border: `1px solid ${PINK_LINE}`, color: PINK_DEEP }}
             />
           </label>
           <label className="flex items-center gap-2">
@@ -199,13 +218,14 @@ export function AnalyticsDashboard() {
                 setPreset(null);
                 setEnd(event.target.value);
               }}
-              className="rounded-lg border border-neutral-300 bg-white px-2 py-1.5"
+              className="rounded-full bg-white px-3 py-1.5"
+              style={{ border: `1px solid ${PINK_LINE}`, color: PINK_DEEP }}
             />
           </label>
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-neutral-200" role="tablist">
+      <div className="flex gap-1" style={{ borderBottom: `1px solid ${PINK_LINE}` }} role="tablist">
         {(
           [
             ["visitors", "Visitors"],
@@ -220,17 +240,17 @@ export function AnalyticsDashboard() {
               role="tab"
               aria-selected={selected}
               onClick={() => setTab(id)}
-              className="rounded-t-lg px-4 py-2 text-sm font-medium"
+              className="rounded-t-2xl px-5 py-2 text-sm font-medium"
               style={
                 selected
                   ? {
                       background: "white",
-                      color: "#171717",
-                      border: "1px solid #e5e5e5",
+                      color: PINK_DEEP,
+                      border: `1px solid ${PINK_LINE}`,
                       borderBottomColor: "white",
                       marginBottom: "-1px",
                     }
-                  : { color: "#737373" }
+                  : { color: PINK_MUTED }
               }
             >
               {label}
@@ -239,9 +259,16 @@ export function AnalyticsDashboard() {
         })}
       </div>
 
-      {load.status === "loading" && <p className="text-sm text-neutral-500">Loading the numbers…</p>}
+      {load.status === "loading" && (
+        <p className="text-sm" style={{ color: PINK_MUTED }}>
+          Loading the numbers…
+        </p>
+      )}
       {load.status === "error" && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: "#fff0f4", color: "#9b2c4a", border: "1px solid #f0b4c4" }}
+        >
           {load.message}
         </p>
       )}
@@ -305,7 +332,10 @@ function UsersView({ report }: { report: AnalyticsReport }) {
         <Stat label="Average time on the site" value={formatTime(users.averageSeconds)} />
       </section>
       {users.error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: "#fff0f4", color: "#9b2c4a", border: "1px solid #f0b4c4" }}
+        >
           {users.error}
         </p>
       ) : (
@@ -365,18 +395,28 @@ function PlaceCharts({
 
 function Stat({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white px-4 py-4">
-      <p className="text-sm text-neutral-500">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-neutral-900">{value}</p>
-      {detail && <p className="mt-0.5 text-xs text-neutral-400">{detail}</p>}
+    <div className="rounded-2xl bg-white px-4 py-4" style={{ border: `1px solid ${PINK_LINE}` }}>
+      <p className="text-sm" style={{ color: PINK_MUTED }}>
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-semibold" style={{ color: PINK_DEEP }}>
+        {value}
+      </p>
+      {detail && (
+        <p className="mt-0.5 text-xs" style={{ color: "#c4899e" }}>
+          {detail}
+        </p>
+      )}
     </div>
   );
 }
 
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5">
-      <h2 className="mb-4 text-base font-semibold text-neutral-900">{title}</h2>
+    <div className="rounded-2xl p-5" style={{ background: PINK_SOFT, border: `1px solid ${PINK_LINE}` }}>
+      <h2 className="mb-4 text-base font-semibold" style={{ color: PINK_DEEP }}>
+        {title}
+      </h2>
       {children}
     </div>
   );
@@ -384,8 +424,8 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 
 function SetupHelp() {
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5 text-sm text-neutral-700">
-      <p className="font-semibold text-neutral-900">Google Analytics is not connected to this page yet.</p>
+    <div className="rounded-2xl bg-white p-5 text-sm" style={{ color: PINK_DEEP, border: `1px solid ${PINK_LINE}` }}>
+      <p className="font-semibold">Google Analytics is not connected to this page yet.</p>
       <p className="mt-2">
         The site is already sending visits. Reading them back needs a key from Google. Add these three
         values to the server, then reload this page.
