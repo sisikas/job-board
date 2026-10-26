@@ -24,28 +24,70 @@ function formatTime(seconds: number) {
   return `${minutes}m ${rest}s`;
 }
 
-function Bars({ rows, empty }: { rows: NameCount[]; empty: string }) {
-  if (rows.length === 0) {
+const BAR_COLORS = [
+  "#4082a1",
+  "#e07a3d",
+  "#63912f",
+  "#c43d6e",
+  "#6b4c9a",
+  "#d4a017",
+  "#2f6f6f",
+  "#c4523a",
+  "#3d5a99",
+];
+
+function Bars({ rows, total, empty }: { rows: NameCount[]; total: number; empty: string }) {
+  const [hovered, setHovered] = useState<string | null>(null);
+  if (rows.length === 0 || total === 0) {
     return <p className="text-sm text-neutral-500">{empty}</p>;
   }
-  const max = Math.max(...rows.map((row) => row.users), 1);
+  const bars = rows.map((row, index) => ({
+    label: row.label,
+    percent: Math.round((row.users / total) * 100),
+    color: BAR_COLORS[index % BAR_COLORS.length],
+  }));
+  const counted = rows.reduce((sum, row) => sum + row.users, 0);
+  if (total > counted) {
+    bars.push({
+      label: "Other",
+      percent: Math.round(((total - counted) / total) * 100),
+      color: BAR_COLORS[bars.length % BAR_COLORS.length],
+    });
+  }
+
   return (
     <ul className="flex flex-col gap-3">
-      {rows.map((row) => (
-        <li key={row.label}>
-          <div className="mb-1 flex items-baseline justify-between gap-3 text-sm">
-            <span className="font-medium text-neutral-900">{row.label}</span>
-            <span className="text-neutral-500">{row.users}</span>
+      {bars.map((bar) => (
+        <li
+          key={bar.label}
+          className="relative"
+          onMouseEnter={() => setHovered(bar.label)}
+          onMouseLeave={() => setHovered(null)}
+          onFocus={() => setHovered(bar.label)}
+          onBlur={() => setHovered(null)}
+        >
+          <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+            <span className="flex min-w-0 items-center gap-2 font-medium text-neutral-900">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: bar.color }} />
+              {bar.label}
+            </span>
+            <span className="text-neutral-500">{bar.percent}%</span>
           </div>
-          <div className="h-2 rounded-full bg-neutral-100">
+          <div
+            className="h-3 rounded-full bg-neutral-100"
+            role="img"
+            aria-label={`${bar.label}, ${bar.percent}%`}
+          >
             <div
-              className="h-2 rounded-full"
-              style={{
-                width: `${Math.max(4, (row.users / max) * 100)}%`,
-                background: "var(--brand-brick)",
-              }}
+              className="h-full rounded-full"
+              style={{ width: `${Math.min(bar.percent, 100)}%`, background: bar.color }}
             />
           </div>
+          {hovered === bar.label && (
+            <p className="absolute left-0 top-full z-10 mt-1 rounded-md bg-neutral-900 px-2 py-1 text-xs text-white">
+              {bar.label}
+            </p>
+          )}
         </li>
       ))}
     </ul>
@@ -75,11 +117,13 @@ export function AnalyticsDashboard() {
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [preset, setPreset] = useState<number | null>(7);
+  const [excludeGreece, setExcludeGreece] = useState(false);
   const [load, setLoad] = useState<Load>({ status: "loading" });
 
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ start, end });
+    if (excludeGreece) params.set("exclude", "greece");
     fetch(`/api/admin/analytics?${params}`, { signal: controller.signal })
       .then(async (response) => {
         const body = (await response.json()) as {
@@ -106,7 +150,7 @@ export function AnalyticsDashboard() {
         setLoad({ status: "error", message: "The numbers could not be loaded." });
       });
     return () => controller.abort();
-  }, [start, end]);
+  }, [start, end, excludeGreece]);
 
   function applyPreset(days: number) {
     const range = lastDays(days);
@@ -117,6 +161,15 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
+      <label className="flex w-fit items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-900">
+        <input
+          type="checkbox"
+          checked={excludeGreece}
+          onChange={(event) => setExcludeGreece(event.target.checked)}
+          className="h-4 w-4 accent-[var(--brand-brick)]"
+        />
+        Exclude Greece
+      </label>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {[
@@ -197,14 +250,23 @@ function ReportView({ report }: { report: AnalyticsReport }) {
             detail={`${action.users} of ${visitors}`}
           />
         ))}
+        <Stat
+          label="No action or bounced after hitting the wall"
+          value={report.welcomeSearch.error ? "—" : `${report.welcomeSearch.percent}%`}
+          detail={
+            report.welcomeSearch.error
+              ? report.welcomeSearch.error
+              : `${report.welcomeSearch.users} of ${visitors} visitors searched, then left or did nothing`
+          }
+        />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-2">
         <Panel title="Where they came from">
-          <Bars rows={report.sources} empty="No visits in these dates yet." />
+          <Bars rows={report.sources} total={report.visitors} empty="No visits in these dates yet." />
         </Panel>
         <Panel title="Which country">
-          <Bars rows={report.countries} empty="No visits in these dates yet." />
+          <Bars rows={report.countries} total={report.visitors} empty="No visits in these dates yet." />
         </Panel>
       </section>
 

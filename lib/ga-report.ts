@@ -34,6 +34,11 @@ export type AnalyticsReport = {
     actions: ActionStat[];
     error?: string;
   };
+  welcomeSearch: {
+    users: number;
+    percent: number;
+    error?: string;
+  };
 };
 
 type GaRow = {
@@ -159,11 +164,30 @@ type FunnelTable = {
   rows?: GaRow[];
 };
 
+function withoutGreece() {
+  return {
+    notExpression: {
+      filter: {
+        fieldName: "country",
+        stringFilter: { matchType: "EXACT", value: "Greece", caseSensitive: false },
+      },
+    },
+  };
+}
+
+function combineFilters(...filters: (Record<string, unknown> | undefined)[]) {
+  const present = filters.filter((filter): filter is Record<string, unknown> => Boolean(filter));
+  if (present.length === 0) return undefined;
+  if (present.length === 1) return present[0];
+  return { andGroup: { expressions: present } };
+}
+
 async function runFunnel(
   propertyId: string,
   token: string,
   dateRanges: { startDate: string; endDate: string }[],
-  eventName: string
+  events: string[],
+  dimensionFilter?: Record<string, unknown>
 ) {
   const response = await fetch(
     `https://analyticsdata.googleapis.com/v1alpha/properties/${propertyId}:runFunnelReport`,
@@ -175,17 +199,12 @@ async function runFunnel(
       },
       body: JSON.stringify({
         dateRanges,
+        ...(dimensionFilter ? { dimensionFilter } : {}),
         funnel: {
-          steps: [
-            {
-              name: "Signed up",
-              filterExpression: { funnelEventFilter: { eventName: "sign_up" } },
-            },
-            {
-              name: eventName,
-              filterExpression: { funnelEventFilter: { eventName } },
-            },
-          ],
+          steps: events.map((eventName) => ({
+            name: eventName,
+            filterExpression: { funnelEventFilter: { eventName } },
+          })),
         },
       }),
       cache: "no-store",
@@ -270,7 +289,11 @@ function engagementSeconds(report: GaReport | undefined, users: number) {
   return Math.round(total / users);
 }
 
-export async function getAnalyticsReport(start: string, end: string): Promise<AnalyticsReport> {
+export async function getAnalyticsReport(
+  start: string,
+  end: string,
+  options?: { excludeGreece?: boolean }
+): Promise<AnalyticsReport> {
   const creds = credentials();
   if (!creds) {
     throw new Error("Google Analytics is not connected yet.");
@@ -283,12 +306,18 @@ export async function getAnalyticsReport(start: string, end: string): Promise<An
 
   const token = await accessToken(creds.email, creds.key);
   const dateRanges = [{ startDate: start, endDate: end }];
-  const eventFilter = {
-    filter: {
-      fieldName: "eventName",
-      inListFilter: { values: ["search", "scroll_end", "sign_up", "view_job"] },
+  const countryFilter = options?.excludeGreece ? withoutGreece() : undefined;
+  const eventFilter = combineFilters(
+    {
+      filter: {
+        fieldName: "eventName",
+        inListFilter: {
+          values: ["search", "scroll_end", "sign_up", "view_job", "welcome_search"],
+        },
+      },
     },
-  };
+    countryFilter
+  );
 
   const main = runReports(creds.propertyId, token, [
     {
@@ -298,6 +327,7 @@ export async function getAnalyticsReport(start: string, end: string): Promise<An
         { name: "bounceRate" },
         { name: "userEngagementDuration" },
       ],
+      ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
     },
     {
       dateRanges,
@@ -311,6 +341,7 @@ export async function getAnalyticsReport(start: string, end: string): Promise<An
       metrics: [{ name: "activeUsers" }],
       orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
       limit: "8",
+      ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
     },
     {
       dateRanges,
@@ -318,11 +349,18 @@ export async function getAnalyticsReport(start: string, end: string): Promise<An
       metrics: [{ name: "activeUsers" }],
       orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
       limit: "8",
+      ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
     },
   ]);
   const signupFunnels = Promise.all(
     SIGNUP_ACTIONS.map(async (eventName) => {
-      const table = await runFunnel(creds.propertyId, token, dateRanges, eventName);
+      const table = await runFunnel(
+        creds.propertyId,
+        token,
+        dateRanges,
+        ["sign_up", eventName],
+        countryFilter
+      );
       return {
         eventName,
         signups: funnelStepUsers(table, 1),
@@ -332,6 +370,20 @@ export async function getAnalyticsReport(start: string, end: string): Promise<An
   ).catch((error: unknown) =>
     error instanceof Error ? error : new Error("Sign-up numbers could not be loaded.")
   );
+  const welcomeFunnel = runFunnel(
+    creds.propertyId,
+    token,
+    dateRanges,
+    ["welcome_search", "sign_up"],
+    countryFilter
+  )
+    .then((table) => ({
+      searched: funnelStepUsers(table, 1),
+      thenSignedUp: funnelStepUsers(table, 2),
+    }))
+    .catch((error: unknown) =>
+      error instanceof Error ? error : new Error("Welcome search numbers could not be loaded.")
+    );
 
   const [overview, events, sources, countries] = await main;
   const signupResult = await signupFunnels;
@@ -345,6 +397,11 @@ export async function getAnalyticsReport(start: string, end: string): Promise<An
   const signupUsers = signupFailed
     ? 0
     : Math.max(...signupResult.map((item) => item.signups), 0);
+  const welcomeResult = await welcomeFunnel;
+  const welcomeUsers =
+    welcomeResult instanceof Error
+      ? 0
+      : Math.min(visitors, Math.max(welcomeResult.searched - welcomeResult.thenSignedUp, 0));
 
   return {
     start,
@@ -369,6 +426,11 @@ export async function getAnalyticsReport(start: string, end: string): Promise<An
             percent: percent(item.users, signupUsers),
           })),
       error: signupFailed ? signupResult.message : undefined,
+    },
+    welcomeSearch: {
+      users: welcomeResult instanceof Error ? 0 : welcomeUsers,
+      percent: welcomeResult instanceof Error ? 0 : percent(welcomeUsers, visitors),
+      error: welcomeResult instanceof Error ? welcomeResult.message : undefined,
     },
   };
 }

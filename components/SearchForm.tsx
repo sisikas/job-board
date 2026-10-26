@@ -8,12 +8,16 @@ export async function SearchForm({
   city = "",
   country = "",
   stacked = false,
+  welcome = false,
+  signedIn = false,
 }: {
   q?: string;
   placeLabel?: string;
   city?: string;
   country?: string;
   stacked?: boolean;
+  welcome?: boolean;
+  signedIn?: boolean;
 }) {
   const locations = await getLocations();
 
@@ -21,6 +25,8 @@ export async function SearchForm({
     <TrackSearchForm
       method="get"
       action="/"
+      welcome={welcome}
+      signedIn={signedIn}
       className={stacked ? "flex flex-col gap-3" : "flex flex-col sm:flex-row gap-2.5 sm:gap-3"}
     >
       <LocationFilter

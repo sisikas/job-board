@@ -28,13 +28,23 @@ export function GoogleAnalytics() {
   return null;
 }
 
-export function TrackSearchForm(props: ComponentProps<"form">) {
-  const { onSubmit, ...rest } = props;
+function typedSearch(form: HTMLFormElement) {
+  const data = new FormData(form);
+  return ["q", "location", "city", "country"].some((key) => String(data.get(key) ?? "").trim());
+}
+
+export function TrackSearchForm(
+  props: ComponentProps<"form"> & { welcome?: boolean; signedIn?: boolean }
+) {
+  const { onSubmit, welcome, signedIn, ...rest } = props;
   return (
     <form
       {...rest}
       onSubmit={(event) => {
         trackGaEvent("search");
+        if (welcome && !signedIn && typedSearch(event.currentTarget)) {
+          trackGaEvent("welcome_search");
+        }
         onSubmit?.(event);
       }}
     />

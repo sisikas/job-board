@@ -65,7 +65,9 @@ export default async function Home({
         signedIn={signedIn}
         hiddenCount={signedIn ? undefined : hiddenCount}
         teaserCount={teaserCount}
-        searchRow={<SearchForm q={q} placeLabel={placeLabel} city={city} country={country} />}
+        searchRow={
+          <SearchForm q={q} placeLabel={placeLabel} city={city} country={country} welcome signedIn={signedIn} />
+        }
         searchStacked={
           <SearchForm q={q} placeLabel={placeLabel} city={city} country={country} stacked />
         }
