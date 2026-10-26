@@ -17,7 +17,7 @@ export default async function AnalyticsPage() {
           <div>
             <h1 className="text-xl font-semibold text-neutral-900">Visits</h1>
             <p className="text-sm text-neutral-500 mt-0.5">
-              Where people came from, what they did, and what sign-ups did afterwards.
+              Visitors and users, for the dates you pick.
             </p>
           </div>
           <div className="flex items-center gap-4">

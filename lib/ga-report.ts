@@ -1,42 +1,31 @@
 import crypto from "crypto";
 
-const ACTION_LABELS: Record<string, string> = {
-  search: "Pressed Search",
-  scroll_end: "Reached the bottom",
-  sign_up: "Signed up",
-  view_job: "Opened a job",
-};
+export type NameCount = { label: string; users: number };
 
-const EVERYONE_ACTIONS = ["search", "scroll_end", "sign_up"] as const;
-const SIGNUP_ACTIONS = ["search", "view_job", "scroll_end"] as const;
-
-export type ActionStat = {
-  key: string;
-  label: string;
+export type CountStat = {
   users: number;
   percent: number;
+  error?: string;
 };
-
-export type NameCount = { label: string; users: number };
 
 export type AnalyticsReport = {
   start: string;
   end: string;
-  visitors: number;
-  bouncePercent: number;
-  averageSeconds: number;
-  actions: ActionStat[];
-  sources: NameCount[];
-  countries: NameCount[];
-  signups: {
-    users: number;
+  visitors: {
+    count: number;
+    bouncePercent: number;
     averageSeconds: number;
-    actions: ActionStat[];
-    error?: string;
+    wallLeft: CountStat;
+    wallSignedUp: CountStat;
+    sources: NameCount[];
+    countries: NameCount[];
   };
-  welcomeSearch: {
-    users: number;
-    percent: number;
+  users: {
+    count: number;
+    searchedAfter: CountStat;
+    averageSeconds: number;
+    sources: NameCount[];
+    countries: NameCount[];
     error?: string;
   };
 };
@@ -187,7 +176,8 @@ async function runFunnel(
   token: string,
   dateRanges: { startDate: string; endDate: string }[],
   events: string[],
-  dimensionFilter?: Record<string, unknown>
+  dimensionFilter?: Record<string, unknown>,
+  breakdown?: string
 ) {
   const response = await fetch(
     `https://analyticsdata.googleapis.com/v1alpha/properties/${propertyId}:runFunnelReport`,
@@ -200,6 +190,9 @@ async function runFunnel(
       body: JSON.stringify({
         dateRanges,
         ...(dimensionFilter ? { dimensionFilter } : {}),
+        ...(breakdown
+          ? { funnelBreakdown: { breakdownDimension: { name: breakdown }, limit: 8 } }
+          : {}),
         funnel: {
           steps: events.map((eventName) => ({
             name: eventName,
@@ -253,33 +246,37 @@ function percent(part: number, whole: number) {
   return Math.round((part / whole) * 100);
 }
 
-function actionsFrom(
-  report: GaReport | undefined,
-  keys: readonly string[],
-  whole: number
-): ActionStat[] {
-  const usersByEvent = new Map<string, number>();
-  for (const row of report?.rows ?? []) {
-    const name = dimensionValue(report, row, "eventName");
-    usersByEvent.set(name, metricValue(report, row, "activeUsers"));
+function asError(error: unknown, fallback: string) {
+  return error instanceof Error ? error : new Error(fallback);
+}
+
+function placeLabel(raw: string) {
+  if (raw === "(direct) / (none)" || raw === "(none)") return "Direct visit";
+  if (raw === "(not set)" || !raw) return "Unknown";
+  return raw;
+}
+
+function breakdownCounts(table: FunnelTable | undefined, dimension: string): NameCount[] {
+  const stepIndex = headerIndex(table?.dimensionHeaders, "funnelStepName");
+  const nameIndex = headerIndex(table?.dimensionHeaders, dimension);
+  const metric = headerIndex(table?.metricHeaders, "activeUsers");
+  const counts: NameCount[] = [];
+  for (const row of table?.rows ?? []) {
+    const step = row.dimensionValues?.[stepIndex]?.value ?? "";
+    const raw = row.dimensionValues?.[nameIndex]?.value ?? "";
+    if (!step.startsWith("1.") || raw === "RESERVED_TOTAL" || metric < 0) continue;
+    const users = Number(row.metricValues?.[metric]?.value ?? 0);
+    counts.push({ label: placeLabel(raw), users: Number.isFinite(users) ? users : 0 });
   }
-  return keys.map((key) => {
-    const users = usersByEvent.get(key) ?? 0;
-    return { key, label: ACTION_LABELS[key] ?? key, users, percent: percent(users, whole) };
-  });
+  counts.sort((a, b) => b.users - a.users);
+  return counts;
 }
 
 function nameCounts(report: GaReport | undefined, dimension: string): NameCount[] {
-  return (report?.rows ?? []).map((row) => {
-    const raw = dimensionValue(report, row, dimension);
-    const label =
-      raw === "(direct) / (none)"
-        ? "Direct visit"
-        : raw === "(not set)" || !raw
-          ? "Unknown"
-          : raw;
-    return { label, users: metricValue(report, row, "activeUsers") };
-  });
+  return (report?.rows ?? []).map((row) => ({
+    label: placeLabel(dimensionValue(report, row, dimension)),
+    users: metricValue(report, row, "activeUsers"),
+  }));
 }
 
 function engagementSeconds(report: GaReport | undefined, users: number) {
@@ -311,9 +308,7 @@ export async function getAnalyticsReport(
     {
       filter: {
         fieldName: "eventName",
-        inListFilter: {
-          values: ["search", "scroll_end", "sign_up", "view_job", "welcome_search"],
-        },
+        stringFilter: { matchType: "EXACT", value: "sign_up" },
       },
     },
     countryFilter
@@ -352,24 +347,6 @@ export async function getAnalyticsReport(
       ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
     },
   ]);
-  const signupFunnels = Promise.all(
-    SIGNUP_ACTIONS.map(async (eventName) => {
-      const table = await runFunnel(
-        creds.propertyId,
-        token,
-        dateRanges,
-        ["sign_up", eventName],
-        countryFilter
-      );
-      return {
-        eventName,
-        signups: funnelStepUsers(table, 1),
-        users: funnelStepUsers(table, 2),
-      };
-    })
-  ).catch((error: unknown) =>
-    error instanceof Error ? error : new Error("Sign-up numbers could not be loaded.")
-  );
   const welcomeFunnel = runFunnel(
     creds.propertyId,
     token,
@@ -379,58 +356,100 @@ export async function getAnalyticsReport(
   )
     .then((table) => ({
       searched: funnelStepUsers(table, 1),
-      thenSignedUp: funnelStepUsers(table, 2),
+      signedUp: funnelStepUsers(table, 2),
     }))
-    .catch((error: unknown) =>
-      error instanceof Error ? error : new Error("Welcome search numbers could not be loaded.")
-    );
+    .catch((error: unknown) => asError(error, "The sign-up wall numbers could not be loaded."));
+  const searchedAfterFunnel = runFunnel(
+    creds.propertyId,
+    token,
+    dateRanges,
+    ["sign_up", "search"],
+    countryFilter
+  )
+    .then((table) => ({
+      users: funnelStepUsers(table, 1),
+      searched: funnelStepUsers(table, 2),
+    }))
+    .catch((error: unknown) => asError(error, "The user numbers could not be loaded."));
+  const userSourcesFunnel = runFunnel(
+    creds.propertyId,
+    token,
+    dateRanges,
+    ["sign_up"],
+    countryFilter,
+    "sessionSourceMedium"
+  )
+    .then((table) => breakdownCounts(table, "sessionSourceMedium"))
+    .catch((error: unknown) => asError(error, "Where users came from could not be loaded."));
+  const userCountriesFunnel = runFunnel(
+    creds.propertyId,
+    token,
+    dateRanges,
+    ["sign_up"],
+    countryFilter,
+    "country"
+  )
+    .then((table) => breakdownCounts(table, "country"))
+    .catch((error: unknown) => asError(error, "Where users came from could not be loaded."));
 
   const [overview, events, sources, countries] = await main;
-  const signupResult = await signupFunnels;
-  const signupFailed = signupResult instanceof Error;
   const overviewRow = overview?.rows?.[0];
   const visitors = metricValue(overview, overviewRow, "activeUsers");
   const bounce = metricValue(overview, overviewRow, "bounceRate");
-  const signupRow = events?.rows?.find(
-    (row) => dimensionValue(events, row, "eventName") === "sign_up"
-  );
-  const signupUsers = signupFailed
-    ? 0
-    : Math.max(...signupResult.map((item) => item.signups), 0);
+  const signupRow = events?.rows?.[0];
+  const signupEventUsers = metricValue(events, signupRow, "activeUsers");
   const welcomeResult = await welcomeFunnel;
-  const welcomeUsers =
-    welcomeResult instanceof Error
+  const searchedAfter = await searchedAfterFunnel;
+  const userSources = await userSourcesFunnel;
+  const userCountries = await userCountriesFunnel;
+  const wallFailed = welcomeResult instanceof Error;
+  const wallLeft = wallFailed
+    ? 0
+    : Math.min(visitors, Math.max(welcomeResult.searched - welcomeResult.signedUp, 0));
+  const wallSignedUp = wallFailed ? 0 : Math.min(visitors, welcomeResult.signedUp);
+  const userCount = searchedAfter instanceof Error ? signupEventUsers : searchedAfter.users;
+  const searchedAfterUsers =
+    searchedAfter instanceof Error
       ? 0
-      : Math.min(visitors, Math.max(welcomeResult.searched - welcomeResult.thenSignedUp, 0));
-
+      : Math.min(userCount, searchedAfter.searched);
   return {
     start,
     end,
-    visitors,
-    bouncePercent: Math.round((bounce <= 1 ? bounce * 100 : bounce) * 10) / 10,
-    averageSeconds: engagementSeconds(overview, visitors),
-    actions: actionsFrom(events, EVERYONE_ACTIONS, visitors),
-    sources: nameCounts(sources, "sessionSourceMedium"),
-    countries: nameCounts(countries, "country"),
-    signups: {
-      users: signupUsers,
-      averageSeconds: signupUsers
-        ? Math.round(metricValue(events, signupRow, "userEngagementDuration") / signupUsers)
-        : 0,
-      actions: signupFailed
-        ? []
-        : signupResult.map((item) => ({
-            key: item.eventName,
-            label: ACTION_LABELS[item.eventName] ?? item.eventName,
-            users: item.users,
-            percent: percent(item.users, signupUsers),
-          })),
-      error: signupFailed ? signupResult.message : undefined,
+    visitors: {
+      count: visitors,
+      bouncePercent: Math.round((bounce <= 1 ? bounce * 100 : bounce) * 10) / 10,
+      averageSeconds: engagementSeconds(overview, visitors),
+      wallLeft: {
+        users: wallLeft,
+        percent: wallFailed ? 0 : percent(wallLeft, visitors),
+        error: wallFailed ? welcomeResult.message : undefined,
+      },
+      wallSignedUp: {
+        users: wallSignedUp,
+        percent: wallFailed ? 0 : percent(wallSignedUp, visitors),
+        error: wallFailed ? welcomeResult.message : undefined,
+      },
+      sources: nameCounts(sources, "sessionSourceMedium"),
+      countries: nameCounts(countries, "country"),
     },
-    welcomeSearch: {
-      users: welcomeResult instanceof Error ? 0 : welcomeUsers,
-      percent: welcomeResult instanceof Error ? 0 : percent(welcomeUsers, visitors),
-      error: welcomeResult instanceof Error ? welcomeResult.message : undefined,
+    users: {
+      count: userCount,
+      searchedAfter: {
+        users: searchedAfterUsers,
+        percent: searchedAfter instanceof Error ? 0 : percent(searchedAfterUsers, userCount),
+        error: searchedAfter instanceof Error ? searchedAfter.message : undefined,
+      },
+      averageSeconds: userCount
+        ? Math.round(metricValue(events, signupRow, "userEngagementDuration") / userCount)
+        : 0,
+      sources: userSources instanceof Error ? [] : userSources,
+      countries: userCountries instanceof Error ? [] : userCountries,
+      error:
+        userSources instanceof Error
+          ? userSources.message
+          : userCountries instanceof Error
+            ? userCountries.message
+            : undefined,
     },
   };
 }

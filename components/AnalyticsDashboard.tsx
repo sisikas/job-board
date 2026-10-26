@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import type { ActionStat, AnalyticsReport, NameCount } from "@/lib/ga-report";
+import type { AnalyticsReport, CountStat, NameCount } from "@/lib/ga-report";
 
 type Load =
   | { status: "loading" }
@@ -94,30 +94,13 @@ function Bars({ rows, total, empty }: { rows: NameCount[]; total: number; empty:
   );
 }
 
-function ActionList({ actions, wholeLabel }: { actions: ActionStat[]; wholeLabel: string }) {
-  return (
-    <ul className="flex flex-col gap-3">
-      {actions.map((action) => (
-        <li key={action.key} className="flex items-center justify-between gap-3 text-sm">
-          <span className="font-medium text-neutral-900">{action.label}</span>
-          <span className="text-neutral-600">
-            {action.percent}%{" "}
-            <span className="text-neutral-400">
-              ({action.users} of {wholeLabel})
-            </span>
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export function AnalyticsDashboard() {
   const initial = lastDays(7);
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
   const [preset, setPreset] = useState<number | null>(7);
   const [excludeGreece, setExcludeGreece] = useState(false);
+  const [tab, setTab] = useState<"visitors" | "users">("visitors");
   const [load, setLoad] = useState<Load>({ status: "loading" });
 
   useEffect(() => {
@@ -222,6 +205,40 @@ export function AnalyticsDashboard() {
         </div>
       </div>
 
+      <div className="flex gap-1 border-b border-neutral-200" role="tablist">
+        {(
+          [
+            ["visitors", "Visitors"],
+            ["users", "Users"],
+          ] as const
+        ).map(([id, label]) => {
+          const selected = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setTab(id)}
+              className="rounded-t-lg px-4 py-2 text-sm font-medium"
+              style={
+                selected
+                  ? {
+                      background: "white",
+                      color: "#171717",
+                      border: "1px solid #e5e5e5",
+                      borderBottomColor: "white",
+                      marginBottom: "-1px",
+                    }
+                  : { color: "#737373" }
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {load.status === "loading" && <p className="text-sm text-neutral-500">Loading the numbers…</p>}
       {load.status === "error" && (
         <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -229,63 +246,120 @@ export function AnalyticsDashboard() {
         </p>
       )}
       {load.status === "missing" && <SetupHelp />}
-      {load.status === "ready" && <ReportView report={load.report} />}
+      {load.status === "ready" &&
+        (tab === "visitors" ? (
+          <VisitorsView report={load.report} />
+        ) : (
+          <UsersView report={load.report} />
+        ))}
     </div>
   );
 }
 
-function ReportView({ report }: { report: AnalyticsReport }) {
-  const visitors = String(report.visitors);
+function VisitorsView({ report }: { report: AnalyticsReport }) {
+  const visitors = report.visitors;
   return (
     <>
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Stat label="Visitors" value={visitors} />
-        <Stat label="Left almost immediately" value={`${report.bouncePercent}%`} />
-        <Stat label="Average time on the site" value={formatTime(report.averageSeconds)} />
-        {report.actions.map((action) => (
-          <Stat
-            key={action.key}
-            label={action.label}
-            value={`${action.percent}%`}
-            detail={`${action.users} of ${visitors}`}
-          />
-        ))}
-        <Stat
+        <Stat label="Visitors" value={String(visitors.count)} />
+        <Stat label="Left almost immediately" value={`${visitors.bouncePercent}%`} />
+        <CountCard
           label="No action or bounced after hitting the wall"
-          value={report.welcomeSearch.error ? "—" : `${report.welcomeSearch.percent}%`}
+          stat={visitors.wallLeft}
+          whole={visitors.count}
+          wholeLabel="visitors"
+        />
+        <CountCard
+          label="Signed up after hitting the wall"
+          stat={visitors.wallSignedUp}
+          whole={visitors.count}
+          wholeLabel="visitors"
+        />
+        <Stat label="Average time on the site" value={formatTime(visitors.averageSeconds)} />
+      </section>
+      <PlaceCharts
+        sources={visitors.sources}
+        countries={visitors.countries}
+        total={visitors.count}
+        empty="No visits in these dates yet."
+      />
+    </>
+  );
+}
+
+function UsersView({ report }: { report: AnalyticsReport }) {
+  const users = report.users;
+  return (
+    <>
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Stat label="Users" value={String(users.count)} />
+        <Stat
+          label="Searched after sign up"
+          value={users.searchedAfter.error ? "—" : `${users.searchedAfter.percent}%`}
           detail={
-            report.welcomeSearch.error
-              ? report.welcomeSearch.error
-              : `${report.welcomeSearch.users} of ${visitors} visitors searched, then left or did nothing`
+            users.searchedAfter.error
+              ? users.searchedAfter.error
+              : `${users.searchedAfter.users} of ${users.count} users`
           }
         />
+        <Stat label="Average time on the site" value={formatTime(users.averageSeconds)} />
       </section>
-
-      <section className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Where they came from">
-          <Bars rows={report.sources} total={report.visitors} empty="No visits in these dates yet." />
-        </Panel>
-        <Panel title="Which country">
-          <Bars rows={report.countries} total={report.visitors} empty="No visits in these dates yet." />
-        </Panel>
-      </section>
-
-      <section className="rounded-xl border border-neutral-200 bg-white p-5">
-        <h2 className="text-base font-semibold text-neutral-900">People who signed up</h2>
-        <p className={`mt-1 text-sm ${report.signups.error ? "text-red-700" : "text-neutral-500"}`}>
-          {report.signups.error
-            ? report.signups.error
-            : report.signups.users === 0
-              ? "Nobody signed up in these dates."
-              : `${report.signups.users} ${report.signups.users === 1 ? "person" : "people"} signed up and stayed ${formatTime(report.signups.averageSeconds)} on average.`}
+      {users.error ? (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {users.error}
         </p>
-        {report.signups.users > 0 && (
-          <div className="mt-4">
-            <ActionList actions={report.signups.actions} wholeLabel="sign-ups" />
-          </div>
-        )}
-      </section>
+      ) : (
+        <PlaceCharts
+          sources={users.sources}
+          countries={users.countries}
+          total={users.count}
+          empty="Nobody signed up in these dates."
+        />
+      )}
     </>
+  );
+}
+
+function CountCard({
+  label,
+  stat,
+  whole,
+  wholeLabel,
+}: {
+  label: string;
+  stat: CountStat;
+  whole: number;
+  wholeLabel: string;
+}) {
+  return (
+    <Stat
+      label={label}
+      value={stat.error ? "—" : String(stat.users)}
+      detail={stat.error ? stat.error : `${stat.percent}% of ${whole} ${wholeLabel}`}
+    />
+  );
+}
+
+function PlaceCharts({
+  sources,
+  countries,
+  total,
+  empty,
+}: {
+  sources: NameCount[];
+  countries: NameCount[];
+  total: number;
+  empty: string;
+}) {
+  return (
+    <section className="grid gap-4 lg:grid-cols-2">
+      <Panel title="Where they came from">
+        <Bars rows={sources} total={total} empty={empty} />
+      </Panel>
+      <Panel title="Which country">
+        <Bars rows={countries} total={total} empty={empty} />
+      </Panel>
+    </section>
   );
 }
 
