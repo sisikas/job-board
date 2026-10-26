@@ -24,12 +24,20 @@ export default async function SignupsPage() {
               Everyone who has created an account, newest first.
             </p>
           </div>
-          <Link
-            href="/admin"
-            className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
-          >
-            &larr; Job postings
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin/analytics"
+              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
+            >
+              Visits
+            </Link>
+            <Link
+              href="/admin"
+              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
+            >
+              &larr; Job postings
+            </Link>
+          </div>
         </div>
       </header>
 

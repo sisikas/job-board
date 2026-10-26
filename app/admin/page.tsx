@@ -315,6 +315,12 @@ export default function AdminPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/admin/analytics"
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
+            >
+              Visits
+            </Link>
+            <Link
               href="/admin/signups"
               className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
             >
