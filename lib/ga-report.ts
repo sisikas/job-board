@@ -43,6 +43,7 @@ type GaReport = {
 
 type TokenCache = { token: string; exp: number };
 let tokenCache: TokenCache | null = null;
+let timeZoneCache: string | null = null;
 
 export function analyticsConfigured() {
   return Boolean(credentials());
@@ -152,6 +153,75 @@ type FunnelTable = {
   metricHeaders?: { name?: string }[];
   rows?: GaRow[];
 };
+
+async function propertyTimeZone(propertyId: string, token: string) {
+  if (timeZoneCache) return timeZoneCache;
+  const response = await fetch(
+    `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dateRanges: [{ startDate: "today", endDate: "today" }],
+        metrics: [{ name: "activeUsers" }],
+      }),
+      cache: "no-store",
+    }
+  );
+  const json = (await response.json()) as {
+    metadata?: { timeZone?: string };
+    error?: { message?: string };
+  };
+  if (!response.ok) {
+    throw new Error(json.error?.message || "Google Analytics did not return the numbers.");
+  }
+  timeZoneCache = json.metadata?.timeZone || "UTC";
+  return timeZoneCache;
+}
+
+function zonedDateHour(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  const hour = pick("hour") === "24" ? "00" : pick("hour");
+  return {
+    date: `${pick("year")}-${pick("month")}-${pick("day")}`,
+    dateHour: `${pick("year")}${pick("month")}${pick("day")}${hour}`,
+  };
+}
+
+function rollingDay(timeZone: string) {
+  const now = new Date();
+  const hours: string[] = [];
+  let start = "";
+  let end = "";
+  for (let ago = 24; ago >= 0; ago -= 1) {
+    const zoned = zonedDateHour(new Date(now.getTime() - ago * 60 * 60 * 1000), timeZone);
+    if (!hours.includes(zoned.dateHour)) hours.push(zoned.dateHour);
+    if (ago === 24) start = zoned.date;
+    if (ago === 0) end = zoned.date;
+  }
+  return { start, end, hours };
+}
+
+function duringHours(hours: string[]) {
+  return {
+    filter: {
+      fieldName: "dateHour",
+      inListFilter: { values: hours },
+    },
+  };
+}
 
 function withoutGreece() {
   return {
@@ -289,7 +359,7 @@ function engagementSeconds(report: GaReport | undefined, users: number) {
 export async function getAnalyticsReport(
   start: string,
   end: string,
-  options?: { excludeGreece?: boolean }
+  options?: { excludeGreece?: boolean; last24Hours?: boolean }
 ): Promise<AnalyticsReport> {
   const creds = credentials();
   if (!creds) {
@@ -302,8 +372,16 @@ export async function getAnalyticsReport(
   }
 
   const token = await accessToken(creds.email, creds.key);
+  let hourFilter: Record<string, unknown> | undefined;
+  if (options?.last24Hours) {
+    const window = rollingDay(await propertyTimeZone(creds.propertyId, token));
+    start = window.start;
+    end = window.end;
+    hourFilter = duringHours(window.hours);
+  }
   const dateRanges = [{ startDate: start, endDate: end }];
   const countryFilter = options?.excludeGreece ? withoutGreece() : undefined;
+  const visitorFilter = combineFilters(countryFilter, hourFilter);
   const eventFilter = combineFilters(
     {
       filter: {
@@ -322,13 +400,13 @@ export async function getAnalyticsReport(
         { name: "bounceRate" },
         { name: "userEngagementDuration" },
       ],
-      ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
+      ...(visitorFilter ? { dimensionFilter: visitorFilter } : {}),
     },
     {
       dateRanges,
       dimensions: [{ name: "eventName" }],
       metrics: [{ name: "activeUsers" }, { name: "userEngagementDuration" }],
-      dimensionFilter: eventFilter,
+      dimensionFilter: combineFilters(eventFilter, hourFilter),
     },
     {
       dateRanges,
@@ -336,7 +414,7 @@ export async function getAnalyticsReport(
       metrics: [{ name: "activeUsers" }],
       orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
       limit: "8",
-      ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
+      ...(visitorFilter ? { dimensionFilter: visitorFilter } : {}),
     },
     {
       dateRanges,
@@ -344,7 +422,7 @@ export async function getAnalyticsReport(
       metrics: [{ name: "activeUsers" }],
       orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
       limit: "8",
-      ...(countryFilter ? { dimensionFilter: countryFilter } : {}),
+      ...(visitorFilter ? { dimensionFilter: visitorFilter } : {}),
     },
   ]);
   const welcomeFunnel = runFunnel(
@@ -352,7 +430,7 @@ export async function getAnalyticsReport(
     token,
     dateRanges,
     ["welcome_search", "sign_up"],
-    countryFilter
+    visitorFilter
   )
     .then((table) => ({
       searched: funnelStepUsers(table, 1),
@@ -364,7 +442,7 @@ export async function getAnalyticsReport(
     token,
     dateRanges,
     ["sign_up", "search"],
-    countryFilter
+    visitorFilter
   )
     .then((table) => ({
       users: funnelStepUsers(table, 1),
@@ -376,7 +454,7 @@ export async function getAnalyticsReport(
     token,
     dateRanges,
     ["sign_up"],
-    countryFilter,
+    visitorFilter,
     "sessionSourceMedium"
   )
     .then((table) => breakdownCounts(table, "sessionSourceMedium"))
@@ -386,7 +464,7 @@ export async function getAnalyticsReport(
     token,
     dateRanges,
     ["sign_up"],
-    countryFilter,
+    visitorFilter,
     "country"
   )
     .then((table) => breakdownCounts(table, "country"))

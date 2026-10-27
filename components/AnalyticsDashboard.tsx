@@ -112,7 +112,7 @@ export function AnalyticsDashboard() {
   const initial = lastDays(7);
   const [start, setStart] = useState(initial.start);
   const [end, setEnd] = useState(initial.end);
-  const [preset, setPreset] = useState<number | null>(7);
+  const [preset, setPreset] = useState<number | "24h" | null>(7);
   const [excludeGreece, setExcludeGreece] = useState(false);
   const [tab, setTab] = useState<"visitors" | "users">("visitors");
   const [load, setLoad] = useState<Load>({ status: "loading" });
@@ -121,6 +121,7 @@ export function AnalyticsDashboard() {
     const controller = new AbortController();
     const params = new URLSearchParams({ start, end });
     if (excludeGreece) params.set("exclude", "greece");
+    if (preset === "24h") params.set("window", "24h");
     fetch(`/api/admin/analytics?${params}`, { signal: controller.signal })
       .then(async (response) => {
         const body = (await response.json()) as {
@@ -147,9 +148,17 @@ export function AnalyticsDashboard() {
         setLoad({ status: "error", message: "The numbers could not be loaded." });
       });
     return () => controller.abort();
-  }, [start, end, excludeGreece]);
+  }, [start, end, excludeGreece, preset]);
 
-  function applyPreset(days: number) {
+  function applyPreset(days: number | "24h") {
+    if (days === "24h") {
+      const endDate = new Date();
+      const startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
+      setPreset("24h");
+      setStart(startDate.toISOString().slice(0, 10));
+      setEnd(endDate.toISOString().slice(0, 10));
+      return;
+    }
     const range = lastDays(days);
     setPreset(days);
     setStart(range.start);
@@ -173,15 +182,18 @@ export function AnalyticsDashboard() {
       </label>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          {[
-            [3, "Past 3 days"],
-            [7, "Past 7 days"],
-            [28, "Past 28 days"],
-          ].map(([days, label]) => (
+          {(
+            [
+              ["24h", "Last day"],
+              [3, "Past 3 days"],
+              [7, "Past 7 days"],
+              [28, "Past 28 days"],
+            ] as const
+          ).map(([days, label]) => (
             <button
               key={days}
               type="button"
-              onClick={() => applyPreset(Number(days))}
+              onClick={() => applyPreset(days)}
               className="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
               style={
                 preset === days

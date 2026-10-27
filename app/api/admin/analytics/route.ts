@@ -32,9 +32,16 @@ export async function GET(request: NextRequest) {
   if (exclude && exclude !== "greece") {
     return NextResponse.json({ error: "That filter is not available." }, { status: 400 });
   }
+  const window = params.get("window");
+  if (window && window !== "24h") {
+    return NextResponse.json({ error: "That filter is not available." }, { status: 400 });
+  }
 
   try {
-    const report = await getAnalyticsReport(start, end, { excludeGreece: exclude === "greece" });
+    const report = await getAnalyticsReport(start, end, {
+      excludeGreece: exclude === "greece",
+      last24Hours: window === "24h",
+    });
     return NextResponse.json({ configured: true, report });
   } catch (error) {
     const message = error instanceof Error ? error.message : "The numbers could not be loaded.";
