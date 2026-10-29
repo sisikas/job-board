@@ -301,48 +301,14 @@ export default function OnboardingFlow({
         {/* STEP 3 — email alerts */}
         {step === 3 && (
           <div style={s.body}>
-            <h1 style={s.h1}>Be the first in line.</h1>
-            <p style={{ ...s.lead, marginBottom: 32 }}>
-              Get an email the moment a new role goes live.
+            <h1 style={s.h1}>Want me to tell you the moment a new job drops?</h1>
+            <p style={{ ...s.lead, fontSize: 18, fontWeight: 500, color: c.brick }}>
+              I hand-pick these jobs myself, the emails are never sponsored and they come at zero cost.
             </p>
 
-            <ol style={s.timeline}>
-              <TimelineItem
-                bg={c.soft}
-                title="A kitchen starts hiring"
-                icon={
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
-                    <path d="M9 20v-6h6v6" />
-                  </svg>
-                }
-              />
-              <TimelineItem
-                bg={c.olive}
-                title="We email you right away"
-                icon={
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.onFill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="3" y="5" width="18" height="14" rx="2" />
-                    <path d="M3 7l9 6 9-6" />
-                  </svg>
-                }
-              />
-              <TimelineItem
-                last
-                bg={c.ink}
-                title="You apply before the crowd"
-                icon={
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.bg} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M5 12h14M13 6l6 6-6 6" />
-                  </svg>
-                }
-              />
-            </ol>
-
             <div style={{ flex: 1 }} />
-            <p style={s.fineprint}>Never sponsored. Unsubscribe in one tap.</p>
             <PrimaryButton disabled={saving} onClick={() => finish(true)}>
-              Yes, tell me first
+              Yes please
             </PrimaryButton>
             <button
               type="button"
@@ -350,7 +316,7 @@ export default function OnboardingFlow({
               onClick={() => finish(false)}
               style={s.textBtn}
             >
-              Not now
+              No thanks
             </button>
           </div>
         )}
@@ -465,30 +431,6 @@ function PrimaryButton({
   );
 }
 
-function TimelineItem({
-  icon,
-  bg,
-  title,
-  last,
-}: {
-  icon: ReactNode;
-  bg: string;
-  title: string;
-  last?: boolean;
-}) {
-  return (
-    <li style={{ display: "flex", gap: 16, minWidth: 0 }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <div style={{ ...s.tlDot, background: bg }}>{icon}</div>
-        {!last && <div style={s.tlLine} />}
-      </div>
-      <div style={{ minWidth: 0, minHeight: 44, display: "flex", alignItems: "center", paddingBottom: last ? 0 : 28 }}>
-        <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
-      </div>
-    </li>
-  );
-}
-
 /* ---------- styles ---------- */
 const chipBase: CSSProperties = {
   display: "inline-flex",
@@ -581,13 +523,6 @@ const s: Record<string, CSSProperties> = {
     font: "inherit", fontSize: 15, fontWeight: 500, textDecoration: "underline",
     textUnderlineOffset: 3, cursor: "pointer",
   },
-  fineprint: { margin: "0 0 14px", textAlign: "center", fontSize: 12, lineHeight: 1.5, color: c.subtle },
-  timeline: { listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column" },
-  tlDot: {
-    width: 44, height: 44, borderRadius: "50%", display: "flex",
-    alignItems: "center", justifyContent: "center", flex: "none",
-  },
-  tlLine: { width: 2, flex: 1, minHeight: 28, background: c.line },
   doneIcon: {
     width: 64, height: 64, borderRadius: "50%", background: c.olive, display: "flex",
     alignItems: "center", justifyContent: "center", marginBottom: 24,
