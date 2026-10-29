@@ -136,7 +136,19 @@ export type JobFilters = {
   location?: string; // typed text: matches city or country, case-insensitive
   city?: string; // picked from the place list
   country?: string;
+  roles?: string[]; // exact role names, any of them
+  roleText?: string[]; // typed roles: the job title contains the words
+  places?: string[]; // "City, Country", a country, or Anywhere
 };
+
+function roleTextMatches(jobRole: string, typed: string) {
+  const role = jobRole.trim().toLowerCase();
+  const query = typed.trim().toLowerCase();
+  if (!query) return false;
+  if (role.includes(query)) return true;
+  const words = query.split(/\s+/).filter(Boolean);
+  return words.length > 1 && words.every((word) => role.includes(word));
+}
 
 export async function searchJobs(filters: JobFilters): Promise<Job[]> {
   // Fetched-then-filtered in JS (the dataset is small) so the search behavior
@@ -146,6 +158,11 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
   const location = filters.location?.trim().toLowerCase();
   const city = filters.city?.trim().toLowerCase();
   const country = filters.country?.trim().toLowerCase();
+  const roles = (filters.roles ?? []).map((role) => role.trim().toLowerCase()).filter(Boolean);
+  const roleText = (filters.roleText ?? []).map((role) => role.trim()).filter(Boolean);
+  const places = (filters.places ?? []).map((place) => place.trim()).filter(Boolean);
+  const anywhere = places.some((place) => place.toLowerCase() === "anywhere");
+  const specificPlaces = places.filter((place) => place.toLowerCase() !== "anywhere");
 
   return jobs.filter((job) => {
     if (job.status !== "open") return false;
@@ -153,6 +170,16 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
     if (q) {
       const haystack = `${job.role} ${job.venue} ${job.description}`.toLowerCase();
       if (!haystack.includes(q)) return false;
+    }
+
+    if (roles.length > 0 || roleText.length > 0) {
+      const jobRole = job.role.trim().toLowerCase();
+      const exact = roles.includes(jobRole);
+      const typed = roleText.some((text) => roleTextMatches(job.role, text));
+      if (!exact && !typed) return false;
+    }
+    if (!anywhere && specificPlaces.length > 0 && !specificPlaces.some((place) => placeMatches(job, place))) {
+      return false;
     }
 
     if (city || country) {
@@ -183,6 +210,18 @@ export function countryNameFromCode(countryCode: string | null): string | null {
   } catch {
     return null;
   }
+}
+
+function placeMatches(job: Job, place: string) {
+  const raw = place.trim().toLowerCase();
+  const city = job.city.trim().toLowerCase();
+  const country = job.country.trim().toLowerCase();
+  const [cityPart, ...rest] = raw.split(",").map((part) => part.trim());
+  const countryPart = rest.join(", ");
+  if (countryPart) {
+    return city === cityPart && (country === countryPart || country.includes(countryPart));
+  }
+  return city === raw || country === raw || `${city} ${country}`.includes(raw);
 }
 
 function visitorCity(value: string | null | undefined) {

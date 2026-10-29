@@ -24,6 +24,13 @@ export default async function AnalyticsPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/admin/onboarding"
+              className="text-sm underline underline-offset-2"
+              style={{ color: "#c4537a" }}
+            >
+              Onboarding
+            </Link>
+            <Link
               href="/admin/signups"
               className="text-sm underline underline-offset-2"
               style={{ color: "#c4537a" }}

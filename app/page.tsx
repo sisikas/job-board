@@ -8,6 +8,11 @@ import { InstagramLink } from "@/components/InstagramLink";
 
 export const dynamic = "force-dynamic";
 
+function asList(value: string | string[] | undefined) {
+  if (!value) return [];
+  return (Array.isArray(value) ? value : [value]).map((item) => item.trim()).filter(Boolean);
+}
+
 // How many jobs logged-out visitors see before the sign-up blur.
 const PREVIEW_COUNT = 6;
 const SEARCH_PREVIEW_COUNT = 2;
@@ -15,7 +20,15 @@ const SEARCH_PREVIEW_COUNT = 2;
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; location?: string; city?: string; country?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    location?: string;
+    city?: string;
+    country?: string;
+    role?: string | string[];
+    roleText?: string | string[];
+    place?: string | string[];
+  }>;
 }) {
   const params = await searchParams;
   const user = await getCurrentUser();
@@ -24,6 +37,10 @@ export default async function Home({
   const city = params.city || "";
   const country = params.country || "";
   const location = params.location || "";
+  const pickedRoles = asList(params.role);
+  const pickedRoleText = asList(params.roleText);
+  const pickedPlaces = asList(params.place);
+  const roleLabel = [...pickedRoles, ...pickedRoleText].join(", ");
   const placeLabel = city && country ? `${city}, ${country}` : city || country || location;
   const query = new URLSearchParams();
   if (q) query.set("q", q);
@@ -32,12 +49,17 @@ export default async function Home({
   if (!city && !country && location) query.set("location", location);
   const returnTo = query.size > 0 ? `/?${query}` : "/";
 
-  const searching = Boolean(q || placeLabel);
+  const searching = Boolean(
+    q || placeLabel || pickedRoles.length || pickedRoleText.length || pickedPlaces.length
+  );
   const results = await searchJobs({
     q,
     city,
     country,
     location: city || country ? undefined : location,
+    roles: pickedRoles,
+    roleText: pickedRoleText,
+    places: pickedPlaces,
   });
   // Vercel sets this from the visitor's IP; it's only used for ordering, never stored.
   const headerList = await headers();
@@ -65,8 +87,8 @@ export default async function Home({
 
       <JobBoard
         jobs={visibleJobs}
-        q={q}
-        location={placeLabel}
+        q={q || roleLabel}
+        location={placeLabel || pickedPlaces.join(", ")}
         returnTo={returnTo}
         signedIn={signedIn}
         hiddenCount={signedIn ? undefined : hiddenCount}

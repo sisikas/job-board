@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { applyClarityConsent, CONSENT_CHANGE, CONSENT_KEY, type ConsentChoice } from "@/lib/clarity-consent";
 
 const PENDING = "pending";
@@ -30,10 +30,30 @@ function choose(choice: ConsentChoice) {
 
 export function CookieNotice() {
   const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) {
+      document.documentElement.style.removeProperty("--cookie-offset");
+      return;
+    }
+    const setOffset = () => {
+      document.documentElement.style.setProperty("--cookie-offset", `${bar.offsetHeight}px`);
+    };
+    setOffset();
+    const observer = new ResizeObserver(setOffset);
+    observer.observe(bar);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--cookie-offset");
+    };
+  }, [stored]);
+
   if (stored !== "unset") return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 p-3 sm:p-4" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+    <div ref={barRef} className="fixed inset-x-0 bottom-0 z-40 p-3 sm:p-4" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
       <div
         role="region"
         aria-label="Cookie notice"

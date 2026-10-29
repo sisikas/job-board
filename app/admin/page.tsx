@@ -326,6 +326,12 @@ export default function AdminPage() {
             >
               Sign-ups
             </Link>
+            <Link
+              href="/admin/onboarding"
+              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
+            >
+              Onboarding
+            </Link>
             <button
               onClick={handleLogout}
               className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"

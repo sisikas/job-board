@@ -47,7 +47,7 @@ export async function signup(_prev: AuthState, formData: FormData): Promise<Auth
   }
 
   await startSession(user.id);
-  return { signedUp: true, next: safeNext(formData.get("next")) };
+  return { signedUp: true, next: "/onboarding" };
 }
 
 export async function login(_prev: AuthState, formData: FormData): Promise<AuthState> {

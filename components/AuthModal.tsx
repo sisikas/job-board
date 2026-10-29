@@ -216,9 +216,10 @@ function AuthForm({
     signupTracked.current = true;
     trackClaritySignup();
     trackGaEvent("sign_up");
-    router.push(state.next || "/");
+    onClose();
+    router.push(state.next || "/onboarding");
     router.refresh();
-  }, [isSignup, router, state]);
+  }, [isSignup, onClose, router, state]);
 
   return (
     <>

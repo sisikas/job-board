@@ -53,6 +53,10 @@ function ensureTables(): Promise<void> {
           expires_at timestamptz NOT NULL
         )
       `;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS roles text[] NOT NULL DEFAULT '{}'`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS locations text[] NOT NULL DEFAULT '{}'`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_alerts boolean NOT NULL DEFAULT false`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded_at timestamptz`;
     })().catch((err) => {
       tablesReady = undefined;
       throw err;
@@ -221,6 +225,14 @@ export async function resetPassword(token: string, newPassword: string): Promise
 
 export type SignupRow = { email: string; createdAt: Date; inLastWeek: boolean };
 
+export type OnboardingAnswer = {
+  email: string;
+  roles: string[];
+  locations: string[];
+  emailAlerts: boolean;
+  onboardedAt: Date;
+};
+
 /** Every job-seeker account, newest first. Admin-only — callers must check isAuthed(). */
 export async function listSignups(): Promise<SignupRow[]> {
   await ensureTables();
@@ -234,6 +246,70 @@ export async function listSignups(): Promise<SignupRow[]> {
     createdAt: row.created_at,
     inLastWeek: row.in_last_week,
   }));
+}
+
+/** Answers from people who finished onboarding, newest first. Admin-only. */
+export async function listOnboardingAnswers(): Promise<OnboardingAnswer[]> {
+  await ensureTables();
+  const rows = await getSql()<
+    {
+      email: string;
+      roles: string[] | null;
+      locations: string[] | null;
+      email_alerts: boolean;
+      onboarded_at: Date;
+    }[]
+  >`
+    SELECT email, roles, locations, email_alerts, onboarded_at
+    FROM users
+    WHERE onboarded_at IS NOT NULL
+    ORDER BY onboarded_at DESC
+  `;
+  return rows.map((row) => ({
+    email: row.email,
+    roles: row.roles ?? [],
+    locations: row.locations ?? [],
+    emailAlerts: row.email_alerts,
+    onboardedAt: row.onboarded_at,
+  }));
+}
+
+function cleanChoices(values: string[]) {
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const value of values) {
+    const trimmed = value.trim().slice(0, 80);
+    const key = trimmed.toLowerCase();
+    if (!trimmed || seen.has(key) || cleaned.length >= 20) continue;
+    seen.add(key);
+    cleaned.push(trimmed);
+  }
+  return cleaned;
+}
+
+export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
+  await ensureTables();
+  const rows = await getSql()<{ onboarded_at: Date | null }[]>`
+    SELECT onboarded_at FROM users WHERE id = ${userId} LIMIT 1
+  `;
+  return Boolean(rows[0]?.onboarded_at);
+}
+
+export async function saveUserOnboarding(
+  userId: string,
+  input: { roles: string[]; locations: string[]; emailAlerts: boolean }
+): Promise<void> {
+  await ensureTables();
+  const roles = cleanChoices(input.roles);
+  const locations = cleanChoices(input.locations);
+  await getSql()`
+    UPDATE users
+    SET roles = ${roles},
+        locations = ${locations},
+        email_alerts = ${input.emailAlerts === true},
+        onboarded_at = now()
+    WHERE id = ${userId}
+  `;
 }
 
 export const getCurrentUser = cache(async (): Promise<User | null> => {

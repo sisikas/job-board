@@ -26,6 +26,12 @@ export default async function SignupsPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/admin/onboarding"
+              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
+            >
+              Onboarding
+            </Link>
+            <Link
               href="/admin/analytics"
               className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
             >
