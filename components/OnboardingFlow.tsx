@@ -173,7 +173,7 @@ export default function OnboardingFlow({
                 aria-pressed={otherOpen}
                 aria-expanded={otherOpen}
                 onClick={() => setOtherOpen((open) => !open)}
-                style={{ ...s.chip, ...(otherOpen ? s.chipOn : s.chipDashed) }}
+                style={{ ...s.chip, ...(otherOpen ? s.chipOn : s.chipMuted) }}
               >
                 Other
               </button>
@@ -303,7 +303,7 @@ export default function OnboardingFlow({
           <div style={s.body}>
             <h1 style={s.h1}>Be the first in line.</h1>
             <p style={{ ...s.lead, marginBottom: 32 }}>
-              The best kitchens hire fast. Here&apos;s how alerts get you there early.
+              Get an email the moment a new role goes live.
             </p>
 
             <ol style={s.timeline}>
@@ -319,7 +319,7 @@ export default function OnboardingFlow({
               />
               <TimelineItem
                 bg={c.olive}
-                title="You are the first to know"
+                title="We email you right away"
                 icon={
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.onFill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -342,7 +342,7 @@ export default function OnboardingFlow({
             <div style={{ flex: 1 }} />
             <p style={s.fineprint}>Never sponsored. Unsubscribe in one tap.</p>
             <PrimaryButton disabled={saving} onClick={() => finish(true)}>
-              Yes, email me new jobs
+              Yes, tell me first
             </PrimaryButton>
             <button
               type="button"
@@ -477,12 +477,12 @@ function TimelineItem({
   last?: boolean;
 }) {
   return (
-    <li style={{ display: "flex", gap: 16 }}>
+    <li style={{ display: "flex", gap: 16, minWidth: 0 }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
         <div style={{ ...s.tlDot, background: bg }}>{icon}</div>
         {!last && <div style={s.tlLine} />}
       </div>
-      <div style={{ minHeight: 44, display: "flex", alignItems: "center", paddingBottom: last ? 0 : 28 }}>
+      <div style={{ minWidth: 0, minHeight: 44, display: "flex", alignItems: "center", paddingBottom: last ? 0 : 28 }}>
         <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
       </div>
     </li>
@@ -493,11 +493,16 @@ function TimelineItem({
 const chipBase: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  justifyContent: "center",
+  maxWidth: "100%",
   minHeight: 44,
   borderRadius: 999,
   font: "inherit",
   fontSize: 15,
   fontWeight: 500,
+  lineHeight: 1.2,
+  textAlign: "center",
+  whiteSpace: "normal",
   cursor: "pointer",
   boxSizing: "border-box",
   color: c.ink,
@@ -505,7 +510,11 @@ const chipBase: CSSProperties = {
 
 const s: Record<string, CSSProperties> = {
   page: {
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
     minHeight: "100dvh",
+    overflowX: "clip",
     background: c.bg,
     color: c.ink,
     fontFamily: "inherit",
@@ -515,9 +524,13 @@ const s: Record<string, CSSProperties> = {
   shell: {
     width: "100%",
     maxWidth: 480,
+    minWidth: 0,
     minHeight: "100dvh",
     boxSizing: "border-box",
-    padding: "16px 24px calc(28px + var(--cookie-offset, 0px))",
+    paddingTop: "max(16px, env(safe-area-inset-top))",
+    paddingRight: "max(24px, env(safe-area-inset-right))",
+    paddingBottom: "calc(28px + var(--cookie-offset, 0px) + env(safe-area-inset-bottom))",
+    paddingLeft: "max(24px, env(safe-area-inset-left))",
     display: "flex",
     flexDirection: "column",
   },
@@ -529,18 +542,18 @@ const s: Record<string, CSSProperties> = {
   stepLabel: { width: 44, textAlign: "right", fontSize: 13, color: c.subtle },
   progress: { display: "flex", gap: 6, margin: "8px 0 32px" },
   seg: { flex: 1, height: 4, borderRadius: 2 },
-  body: { display: "flex", flexDirection: "column", flex: 1, minHeight: 0 },
+  body: { display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0, width: "100%" },
   eyebrow: {
     margin: "0 0 10px", fontSize: 13, fontWeight: 600, letterSpacing: "0.08em",
     textTransform: "uppercase", color: c.brick,
   },
   h1: { margin: "0 0 12px", fontWeight: 700, fontSize: 30, lineHeight: 1.2, letterSpacing: "-0.025em" },
   lead: { margin: "0 0 24px", fontSize: 16, lineHeight: 1.5, color: c.muted },
-  chipWrap: { display: "flex", flexWrap: "wrap", gap: 10 },
-  chip: { ...chipBase, padding: "0 18px" },
+  chipWrap: { display: "flex", flexWrap: "wrap", gap: 10, width: "100%", minWidth: 0, maxWidth: "100%" },
+  chip: { ...chipBase, padding: "10px 18px" },
   chipOn: { border: `1.5px solid ${c.olive}`, background: c.olive, color: c.onFill },
   chipOff: { border: `1.5px solid ${c.chipLine}`, background: c.surface },
-  chipDashed: { border: `1.5px dashed ${c.ink}`, background: c.surface },
+  chipMuted: { border: `1.5px solid ${c.disabledBg}`, background: c.disabledBg, color: c.disabledInk },
   label: { fontSize: 13, fontWeight: 600, marginBottom: 8 },
   inputWrap: {
     display: "flex", alignItems: "center", gap: 10, height: 52, padding: "0 16px",
