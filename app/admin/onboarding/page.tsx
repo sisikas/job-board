@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAuthed } from "@/lib/auth";
 import { listOnboardingAnswers } from "@/lib/users";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { LocalTime } from "@/components/LocalTime";
 
 export const metadata = { title: "Onboarding — Admin" };
@@ -77,6 +78,9 @@ export default async function OnboardingAdminPage() {
                   <span className="text-sm text-neutral-500">
                     <LocalTime iso={answer.onboardedAt.toISOString()} />
                   </span>
+                </div>
+                <div className="mt-3">
+                  <ConfirmDelete email={answer.email} kind="onboarder" />
                 </div>
                 <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
                   <div>

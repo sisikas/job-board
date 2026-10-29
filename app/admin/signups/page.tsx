@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAuthed } from "@/lib/auth";
 import { listSignups } from "@/lib/users";
+import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { LocalTime } from "@/components/LocalTime";
 
 export const metadata = { title: "Sign-ups — Admin" };
@@ -69,32 +70,23 @@ export default async function SignupsPage() {
             Nobody has signed up yet.
           </div>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-50 text-xs uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium w-16">#</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Signed up</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {signups.map((signup, index) => (
-                  <tr key={signup.email}>
-                    <td className="px-4 py-3 text-neutral-400">{signups.length - index}</td>
-                    <td className="px-4 py-3 font-medium text-neutral-900">
-                      <a href={`mailto:${signup.email}`} className="hover:underline">
-                        {signup.email}
-                      </a>
-                    </td>
-                    <td className="px-4 py-3 text-neutral-600">
-                      <LocalTime iso={signup.createdAt.toISOString()} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-neutral-100 overflow-hidden rounded-xl border border-neutral-200 bg-white">
+            {signups.map((signup) => (
+              <li key={signup.email} className="px-4 py-3">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <a href={`mailto:${signup.email}`} className="font-medium text-neutral-900 hover:underline">
+                    {signup.email}
+                  </a>
+                  <span className="text-sm text-neutral-500">
+                    <LocalTime iso={signup.createdAt.toISOString()} />
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <ConfirmDelete email={signup.email} kind="signup" />
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </main>
     </div>

@@ -11,10 +11,12 @@ export const metadata = {
 
 export default async function OnboardingPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/");
-  if (await hasCompletedOnboarding(user.id)) redirect("/");
+  const finished = user ? await hasCompletedOnboarding(user.id) : false;
+  const canSave = Boolean(user) && !finished;
 
-  return (
-    <OnboardingFlow onComplete={completeOnboarding} />
-  );
+  // On the live site, only a new account that has not finished can open this.
+  // Locally it stays open so it can be reviewed without another sign-up.
+  if (process.env.NODE_ENV === "production" && !canSave) redirect("/");
+
+  return <OnboardingFlow onComplete={canSave ? completeOnboarding : undefined} />;
 }

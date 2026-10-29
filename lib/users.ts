@@ -233,6 +233,17 @@ export type OnboardingAnswer = {
   onboardedAt: Date;
 };
 
+/** Removes a job-seeker account. Sessions and password resets go with it. Admin-only. */
+export async function deleteUserByEmail(email: string): Promise<boolean> {
+  await ensureTables();
+  const normalized = normalizeEmail(email);
+  if (!normalized) return false;
+  const rows = await getSql()`
+    DELETE FROM users WHERE email = ${normalized} RETURNING 1
+  `;
+  return rows.length > 0;
+}
+
 /** Every job-seeker account, newest first. Admin-only — callers must check isAuthed(). */
 export async function listSignups(): Promise<SignupRow[]> {
   await ensureTables();
