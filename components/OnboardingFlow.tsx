@@ -11,7 +11,6 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 
 export type OnboardingResult = {
   roles: string[];
@@ -49,24 +48,17 @@ const c = {
   disabledInk: "var(--brand-muted)",
 };
 
-function joinNice(a: string[]) {
-  if (a.length <= 1) return a.join("");
-  return a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
-}
-
 export default function OnboardingFlow({
   onComplete,
   roles: roleOptions = DEFAULT_ROLES,
   locationSuggestions = DEFAULT_PLACES,
 }: Props) {
-  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [roles, setRoles] = useState<string[]>([]);
   const [places, setPlaces] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [otherOpen, setOtherOpen] = useState(false);
   const [roleDraft, setRoleDraft] = useState("");
-  const [alerts, setAlerts] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const toggle = (list: string[], set: (v: string[]) => void, v: string) =>
@@ -113,7 +105,6 @@ export default function OnboardingFlow({
     (step === 1 && roles.length === 0) || (step === 2 && places.length === 0);
 
   const finish = async (emailAlerts: boolean) => {
-    setAlerts(emailAlerts);
     setSaving(true);
     try {
       await onComplete?.({ roles, locations: places, emailAlerts });
@@ -122,19 +113,6 @@ export default function OnboardingFlow({
       setStep(4);
     }
   };
-
-  useEffect(() => {
-    if (step !== 4) return;
-    const timer = window.setTimeout(() => {
-      router.push("/");
-      router.refresh();
-    }, 2800);
-    return () => window.clearTimeout(timer);
-  }, [step, router]);
-
-  const firstRole = roles[0]?.toLowerCase() ?? "sous chef";
-  const firstPlace =
-    places[0] && places[0] !== "Anywhere" ? places[0].split(",")[0] : "Cardiff";
 
   return (
     <div style={s.page}>
@@ -195,7 +173,7 @@ export default function OnboardingFlow({
                 aria-pressed={otherOpen}
                 aria-expanded={otherOpen}
                 onClick={() => setOtherOpen((open) => !open)}
-                style={{ ...s.chip, ...(otherOpen ? s.chipOn : s.chipOff) }}
+                style={{ ...s.chip, ...(otherOpen ? s.chipOn : s.chipDashed) }}
               >
                 Other
               </button>
@@ -323,7 +301,7 @@ export default function OnboardingFlow({
         {/* STEP 3 — email alerts */}
         {step === 3 && (
           <div style={s.body}>
-            <h1 style={s.h1}>Be first in line.</h1>
+            <h1 style={s.h1}>Be the first in line.</h1>
             <p style={{ ...s.lead, marginBottom: 32 }}>
               The best kitchens hire fast. Here&apos;s how alerts get you there early.
             </p>
@@ -332,7 +310,6 @@ export default function OnboardingFlow({
               <TimelineItem
                 bg={c.soft}
                 title="A kitchen starts hiring"
-                text={`A ${firstRole} role opens in ${firstPlace}.`}
                 icon={
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M4 10l8-6 8 6v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z" />
@@ -342,8 +319,7 @@ export default function OnboardingFlow({
               />
               <TimelineItem
                 bg={c.olive}
-                title="You get an email straight away"
-                text="Only if it matches what you picked."
+                title="You are the first to know"
                 icon={
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.onFill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -355,7 +331,6 @@ export default function OnboardingFlow({
                 last
                 bg={c.ink}
                 title="You apply before the crowd"
-                text="Get your name in while the role is fresh."
                 icon={
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.bg} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M5 12h14M13 6l6 6-6 6" />
@@ -388,14 +363,9 @@ export default function OnboardingFlow({
                 <path d="M5 12.5l4.5 4.5L19 7.5" />
               </svg>
             </div>
-            <h1 style={s.h1}>{alerts ? "You’re first in line." : "All set."}</h1>
-            <p style={s.lead}>
-              {alerts
-                ? `We’ll email you as soon as a ${roles[0] ?? "matching"} job goes up in ${joinNice(places) || "your area"}.`
-                : "You can turn on email alerts any time from your account."}
-            </p>
+            <h1 style={s.h1}>All set! Great kitchens, here we come.</h1>
             <div style={{ flex: 1 }} />
-            <a href="/" style={s.darkLink}>Go to the homepage</a>
+            <a href="/" style={s.darkLink}>Start browsing</a>
           </div>
         )}
       </div>
@@ -499,13 +469,11 @@ function TimelineItem({
   icon,
   bg,
   title,
-  text,
   last,
 }: {
   icon: ReactNode;
   bg: string;
   title: string;
-  text: string;
   last?: boolean;
 }) {
   return (
@@ -514,9 +482,8 @@ function TimelineItem({
         <div style={{ ...s.tlDot, background: bg }}>{icon}</div>
         {!last && <div style={s.tlLine} />}
       </div>
-      <div style={{ padding: last ? "10px 0 0" : "10px 0 24px" }}>
+      <div style={{ minHeight: 44, display: "flex", alignItems: "center", paddingBottom: last ? 0 : 28 }}>
         <div style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
-        <div style={{ fontSize: 14, lineHeight: 1.45, color: c.muted, marginTop: 4 }}>{text}</div>
       </div>
     </li>
   );
@@ -573,6 +540,7 @@ const s: Record<string, CSSProperties> = {
   chip: { ...chipBase, padding: "0 18px" },
   chipOn: { border: `1.5px solid ${c.olive}`, background: c.olive, color: c.onFill },
   chipOff: { border: `1.5px solid ${c.chipLine}`, background: c.surface },
+  chipDashed: { border: `1.5px dashed ${c.ink}`, background: c.surface },
   label: { fontSize: 13, fontWeight: 600, marginBottom: 8 },
   inputWrap: {
     display: "flex", alignItems: "center", gap: 10, height: 52, padding: "0 16px",
