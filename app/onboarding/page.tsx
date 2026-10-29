@@ -15,6 +15,6 @@ export default async function OnboardingPage() {
   if (await hasCompletedOnboarding(user.id)) redirect("/");
 
   return (
-    <OnboardingFlow jobsHref="/" onComplete={completeOnboarding} />
+    <OnboardingFlow onComplete={completeOnboarding} />
   );
 }

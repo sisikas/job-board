@@ -10,7 +10,8 @@
  * tokens in app/globals.css.
  */
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 export type OnboardingResult = {
   roles: string[];
@@ -20,7 +21,6 @@ export type OnboardingResult = {
 
 type Props = {
   onComplete?: (result: OnboardingResult) => void | Promise<void>;
-  jobsHref?: string;
   roles?: string[];
   locationSuggestions?: string[];
 };
@@ -54,28 +54,12 @@ function joinNice(a: string[]) {
   return a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
 }
 
-function matchingJobsHref(
-  roles: string[],
-  places: string[],
-  roleOptions: string[],
-  fallback: string
-) {
-  if (roles.length === 0 && places.length === 0) return fallback;
-  const params = new URLSearchParams();
-  for (const role of roles) {
-    const preset = roleOptions.some((option) => option.toLowerCase() === role.toLowerCase());
-    params.append(preset ? "role" : "roleText", role);
-  }
-  for (const place of places) params.append("place", place);
-  return `/?${params.toString()}`;
-}
-
 export default function OnboardingFlow({
   onComplete,
-  jobsHref = "/",
   roles: roleOptions = DEFAULT_ROLES,
   locationSuggestions = DEFAULT_PLACES,
 }: Props) {
+  const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [roles, setRoles] = useState<string[]>([]);
   const [places, setPlaces] = useState<string[]>([]);
@@ -139,12 +123,22 @@ export default function OnboardingFlow({
     }
   };
 
+  useEffect(() => {
+    if (step !== 4) return;
+    const timer = window.setTimeout(() => {
+      router.push("/");
+      router.refresh();
+    }, 2800);
+    return () => window.clearTimeout(timer);
+  }, [step, router]);
+
   const firstRole = roles[0]?.toLowerCase() ?? "sous chef";
   const firstPlace =
     places[0] && places[0] !== "Anywhere" ? places[0].split(",")[0] : "Cardiff";
 
   return (
     <div style={s.page}>
+      {step === 4 && <Confetti />}
       <div style={s.shell}>
         {/* header */}
         <div style={s.header}>
@@ -398,14 +392,80 @@ export default function OnboardingFlow({
             <p style={s.lead}>
               {alerts
                 ? `We’ll email you as soon as a ${roles[0] ?? "matching"} job goes up in ${joinNice(places) || "your area"}.`
-                : "Your jobs are filtered to what you picked. You can turn on email alerts any time from your account."}
+                : "You can turn on email alerts any time from your account."}
             </p>
             <div style={{ flex: 1 }} />
-            <a href={matchingJobsHref(roles, places, roleOptions, jobsHref)} style={s.darkLink}>See my matching jobs</a>
+            <a href="/" style={s.darkLink}>Go to the homepage</a>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+const CONFETTI_COLORS = ["#517228", "#4082a1", "#63912f", "#f7e9bd", "#246482"];
+
+function Confetti() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const pieces = Array.from({ length: 90 }, () => ({
+      x: Math.random(),
+      y: -0.15 - Math.random() * 0.5,
+      w: 6 + Math.random() * 7,
+      h: 9 + Math.random() * 8,
+      vy: 0.0035 + Math.random() * 0.0055,
+      vx: (Math.random() - 0.5) * 0.003,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.18,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+    }));
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    let frame = 0;
+    let raf = 0;
+    const tick = () => {
+      frame += 1;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const piece of pieces) {
+        piece.y += piece.vy;
+        piece.x += piece.vx;
+        piece.rot += piece.vr;
+        ctx.save();
+        ctx.translate(piece.x * canvas.width, piece.y * canvas.height);
+        ctx.rotate(piece.rot);
+        ctx.fillStyle = piece.color;
+        ctx.fillRect(-piece.w / 2, -piece.h / 2, piece.w, piece.h);
+        ctx.restore();
+      }
+      if (frame < 160) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      aria-hidden="true"
+      style={{ position: "fixed", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 30 }}
+    />
   );
 }
 
