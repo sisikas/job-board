@@ -40,7 +40,7 @@ function AccountButton({ signedIn, className }: { signedIn: boolean; className: 
 export function SiteNav({ signedIn }: { signedIn: boolean }) {
   return (
     <header>
-      <div className="md:hidden relative max-w-3xl mx-auto px-4 pt-14 pb-2 flex flex-col items-center">
+      <div className="md:hidden relative max-w-3xl mx-auto px-4 pt-20 pb-2 flex flex-col items-center">
         <Link href="/">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="The Good Sort" className="w-32 h-auto" />

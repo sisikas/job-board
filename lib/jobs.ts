@@ -185,20 +185,40 @@ export function countryNameFromCode(countryCode: string | null): string | null {
   }
 }
 
-/**
- * Latest openings only: up to `count` of the newest jobs in the visitor's
- * country (Vercel sends an ISO code like "AU") move to the front. The rest
- * stay in date order. If none match, the list is unchanged.
- */
-export function putCountryFirst(jobs: Job[], countryCode: string | null, count = 3): Job[] {
-  const name = countryNameFromCode(countryCode);
-  if (!name) return jobs;
-  const code = countryCode!.trim().toUpperCase();
+function visitorCity(value: string | null | undefined) {
+  if (!value) return "";
+  try {
+    return decodeURIComponent(value).trim().toLowerCase();
+  } catch {
+    return value.trim().toLowerCase();
+  }
+}
 
-  const names = new Set([name.toLowerCase(), ...(COUNTRY_ALIASES[code] ?? [])]);
-  const local = jobs.filter((job) => names.has(job.country.trim().toLowerCase())).slice(0, count);
-  if (local.length === 0) return jobs;
-  return [...local, ...jobs.filter((job) => !local.includes(job))];
+function countryNames(countryCode: string | null) {
+  const name = countryNameFromCode(countryCode);
+  if (!name || !countryCode) return new Set<string>();
+  const code = countryCode.trim().toUpperCase();
+  return new Set([name.toLowerCase(), ...(COUNTRY_ALIASES[code] ?? [])]);
+}
+
+/**
+ * Latest openings only. The newest job in the visitor's city goes first, or
+ * the newest in their country when no city matches. Everything else stays in
+ * date order. Vercel sends the area from the IP; it is never stored.
+ */
+export function putClosestFirst(
+  jobs: Job[],
+  countryCode: string | null,
+  cityName?: string | null
+): Job[] {
+  const names = countryNames(countryCode);
+  const city = visitorCity(cityName);
+  const inCountry = (job: Job) => names.size === 0 || names.has(job.country.trim().toLowerCase());
+  const closest =
+    (city ? jobs.find((job) => job.city.trim().toLowerCase() === city && inCountry(job)) : undefined) ||
+    (names.size > 0 ? jobs.find((job) => names.has(job.country.trim().toLowerCase())) : undefined);
+  if (!closest) return jobs;
+  return [closest, ...jobs.filter((job) => job.id !== closest.id)];
 }
 
 /**

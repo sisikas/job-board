@@ -76,20 +76,20 @@ function CardList({ jobs }: { jobs: Job[] }) {
             className="block rounded-2xl p-5 transition-shadow hover:shadow-md"
             style={cardStyle}
           >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--brand-ink)" }}>
-                  {job.role}
-                </h2>
-                <p className="text-sm mt-1 font-semibold" style={{ color: "var(--brand-meta)" }}>
-                  {job.venue} &middot;{" "}
-                  <span style={{ color: "var(--brand-brick)" }}>{place(job)}</span>
-                </p>
-              </div>
-              <span className="shrink-0 text-xs whitespace-nowrap" style={{ color: "var(--brand-date)" }}>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-xl font-bold" style={{ color: "var(--brand-ink)" }}>
+                {job.role}
+              </h2>
+              <span className="shrink-0 pt-1 text-xs whitespace-nowrap" style={{ color: "var(--brand-date)" }}>
                 {formatDate(job.postedAt)}
               </span>
             </div>
+            <p className="mt-1 text-sm font-semibold" style={{ color: "var(--brand-meta)" }}>
+              {job.venue}
+            </p>
+            <p className="text-sm font-semibold" style={{ color: "var(--brand-brick)" }}>
+              {place(job)}
+            </p>
 
             {job.description && (
               <p
@@ -262,6 +262,22 @@ function repeat(count: number, render: (key: number) => ReactNode) {
   return Array.from({ length: count }, (_, i) => render(i));
 }
 
+function WelcomeMotto() {
+  return (
+    <>
+      <h1
+        className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
+        style={{ color: "var(--brand-ink)" }}
+      >
+        Culinary jobs in incredible places
+      </h1>
+      <p className="mt-2 text-base sm:mt-3" style={{ color: "var(--brand-muted)" }}>
+        Free, no recruiters
+      </p>
+    </>
+  );
+}
+
 function HeroBoard({
   jobs,
   signedIn,
@@ -277,12 +293,7 @@ function HeroBoard({
     <>
       <section className="max-w-6xl mx-auto px-6 pb-10">
         <div className="rounded-3xl px-10 py-14 text-center" style={cardStyle}>
-          <h1 className="text-4xl lg:text-5xl font-bold tracking-tight" style={{ color: "var(--brand-ink)" }}>
-            Culinary jobs in incredible places
-          </h1>
-          <p className="mt-3 text-base" style={{ color: "var(--brand-muted)" }}>
-            Search by role or location to see current openings.
-          </p>
+          <WelcomeMotto />
           <div className="mt-8 max-w-3xl mx-auto text-left">{searchRow}</div>
         </div>
       </section>
@@ -377,9 +388,24 @@ export function JobBoard({
   return (
     <main className="flex-1">
       <div className="md:hidden">
-        <div className="mt-5 pb-6 max-w-3xl mx-auto px-4">{searchRow}</div>
-        <div className="max-w-3xl mx-auto px-4 pt-6 pb-6">
-          <ResultsSummary count={totalCount} q={q} location={location} />
+        {searching ? (
+          <div className="mt-5 max-w-3xl mx-auto px-4 pb-6">{searchRow}</div>
+        ) : (
+          <section className="max-w-3xl mx-auto px-4 pt-2 pb-6">
+            <div className="rounded-3xl px-5 py-8 text-center" style={cardStyle}>
+              <WelcomeMotto />
+              <div className="mt-6 text-left">{searchRow}</div>
+            </div>
+          </section>
+        )}
+        <div className="max-w-3xl mx-auto px-4 pb-8">
+          {searching ? (
+            <ResultsSummary count={totalCount} q={q} location={location} />
+          ) : (
+            <h2 className="mb-4 text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
+              Latest openings
+            </h2>
+          )}
           {mobileJobs.length === 0 ? <EmptyState /> : <CardList jobs={mobileJobs} />}
           {mobileTeaser && (
             <LockedRows
