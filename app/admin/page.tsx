@@ -20,6 +20,7 @@ type ColumnFilters = {
   country: string;
   description: string;
   applyContact: string;
+  instagramUrl: string;
   postedAt: string;
 };
 
@@ -31,6 +32,7 @@ function emptyFilters(): ColumnFilters {
     country: "",
     description: "",
     applyContact: "",
+    instagramUrl: "",
     postedAt: "",
   };
 }
@@ -240,6 +242,7 @@ export default function AdminPage() {
         matchesFilter(job.country, columnFilters.country) &&
         matchesFilter(job.description, columnFilters.description) &&
         matchesFilter(job.applyContact, columnFilters.applyContact) &&
+        matchesFilter(job.instagramUrl, columnFilters.instagramUrl) &&
         matchesFilter(job.postedAt, columnFilters.postedAt)
     );
   }, [jobs, columnFilters]);
@@ -383,6 +386,14 @@ export default function AdminPage() {
               }
               className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 sm:col-span-2"
             />
+            <input
+              placeholder="Instagram Business URL"
+              value={newJob.instagramUrl}
+              onChange={(e) =>
+                setNewJob({ ...newJob, instagramUrl: e.target.value })
+              }
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 sm:col-span-2"
+            />
             <label className="flex flex-col gap-1">
               <span className="text-xs text-neutral-500">Posted date</span>
               <input
@@ -452,6 +463,12 @@ export default function AdminPage() {
                   <ColumnSearch
                     value={columnFilters.applyContact}
                     onChange={(value) => setColumnFilter("applyContact", value)}
+                  />
+                </ColumnHeader>
+                <ColumnHeader label="Instagram Business URL">
+                  <ColumnSearch
+                    value={columnFilters.instagramUrl}
+                    onChange={(value) => setColumnFilter("instagramUrl", value)}
                   />
                 </ColumnHeader>
                 <ColumnHeader label="Posted date">
@@ -529,6 +546,17 @@ export default function AdminPage() {
                   </td>
                   <td className="px-4 py-2">
                     <input
+                      value={job.instagramUrl || ""}
+                      placeholder="Instagram Business URL"
+                      onChange={(e) =>
+                        updateLocalJob(job.id, "instagramUrl", e.target.value)
+                      }
+                      size={inputSize(job.instagramUrl || "", 28)}
+                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
                       type="date"
                       value={job.postedAt || ""}
                       onChange={(e) =>
@@ -556,14 +584,14 @@ export default function AdminPage() {
               ))}
               {!loading && jobs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-400">
                     No postings yet — add one above.
                   </td>
                 </tr>
               )}
               {!loading && jobs.length > 0 && visibleJobs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-400">
                     No postings match these column searches.
                   </td>
                 </tr>
