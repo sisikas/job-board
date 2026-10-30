@@ -141,6 +141,11 @@ export default async function JobDetail({
                   This role isn't accepting new applicants right now — check the other open
                   positions below.
                 </p>
+              ) : apply?.method === "text" ? (
+                <p className="text-base leading-relaxed whitespace-pre-wrap" style={{ color: "var(--brand-body)" }}>
+                  <span className="font-bold" style={{ color: "var(--brand-ink)" }}>Ways to apply: </span>
+                  {apply.contact}
+                </p>
               ) : apply ? (
                 <ApplyButton apply={apply} venueName={job.venue} size="large" />
               ) : (

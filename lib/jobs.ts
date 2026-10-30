@@ -4,7 +4,7 @@ import { getSql } from "@/lib/db";
 
 export type JobStatus = "open" | "filled";
 
-export type ApplyMethod = "instagram" | "email" | "link";
+export type ApplyMethod = "instagram" | "email" | "link" | "text";
 
 export type Job = {
   id: string;
@@ -32,6 +32,10 @@ export function getApplyInfo(
 ): { href: string; label: string; method: ApplyMethod; contact: string } | null {
   const contact = job.applyContact?.trim();
   if (!contact) return null;
+
+  if (job.applyMethod === "text") {
+    return { href: "", label: "Ways to apply", method: "text", contact };
+  }
 
   if (job.applyMethod === "email") {
     const email = contact.replace(/^mailto:/i, "");

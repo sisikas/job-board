@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
     city: body.city,
     country: body.country || "",
     description: body.description || "",
-    applyMethod: ["instagram", "email", "link"].includes(body.applyMethod) ? body.applyMethod : "instagram",
+    applyMethod: ["instagram", "email", "link", "text"].includes(body.applyMethod)
+      ? body.applyMethod
+      : "text",
     applyContact: body.applyContact || "",
     instagramUrl: body.instagramUrl || "",
     status: body.status === "filled" ? "filled" : "open",

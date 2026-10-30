@@ -19,11 +19,8 @@ type ColumnFilters = {
   city: string;
   country: string;
   description: string;
-  applyMethod: string;
   applyContact: string;
-  instagramUrl: string;
   postedAt: string;
-  status: string;
 };
 
 function emptyFilters(): ColumnFilters {
@@ -33,11 +30,8 @@ function emptyFilters(): ColumnFilters {
     city: "",
     country: "",
     description: "",
-    applyMethod: "",
     applyContact: "",
-    instagramUrl: "",
     postedAt: "",
-    status: "",
   };
 }
 
@@ -89,7 +83,7 @@ function blankDraft(): DraftJob {
     city: "",
     country: "",
     description: "",
-    applyMethod: "instagram",
+    applyMethod: "text",
     applyContact: "",
     instagramUrl: "",
     status: "open",
@@ -245,11 +239,8 @@ export default function AdminPage() {
         matchesFilter(job.city, columnFilters.city) &&
         matchesFilter(job.country, columnFilters.country) &&
         matchesFilter(job.description, columnFilters.description) &&
-        matchesFilter(job.applyMethod, columnFilters.applyMethod) &&
         matchesFilter(job.applyContact, columnFilters.applyContact) &&
-        matchesFilter(job.instagramUrl, columnFilters.instagramUrl) &&
-        matchesFilter(job.postedAt, columnFilters.postedAt) &&
-        matchesFilter(job.status, columnFilters.status)
+        matchesFilter(job.postedAt, columnFilters.postedAt)
     );
   }, [jobs, columnFilters]);
 
@@ -309,7 +300,7 @@ export default function AdminPage() {
               Manage job postings
             </h1>
             <p className="text-sm text-neutral-500 mt-0.5">
-              Add, edit, mark filled, or remove postings. Changes appear on
+              Add, edit, or remove postings. Changes appear on
               the public page immediately.
             </p>
           </div>
@@ -384,55 +375,14 @@ export default function AdminPage() {
               options={countryOptions}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
             />
-            <select
-              value={newJob.applyMethod}
-              onChange={(e) =>
-                setNewJob({
-                  ...newJob,
-                  applyMethod: e.target.value as Job["applyMethod"],
-                })
-              }
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            >
-              <option value="instagram">Apply via Instagram DM</option>
-              <option value="email">Apply via email</option>
-              <option value="link">Apply via link</option>
-            </select>
             <input
-              placeholder={
-                newJob.applyMethod === "email"
-                  ? "Email address"
-                  : newJob.applyMethod === "instagram"
-                  ? "Instagram @handle"
-                  : "Application URL"
-              }
+              placeholder="Ways to apply"
               value={newJob.applyContact}
               onChange={(e) =>
                 setNewJob({ ...newJob, applyContact: e.target.value })
               }
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 sm:col-span-2"
             />
-            <input
-              placeholder="Business Instagram URL"
-              value={newJob.instagramUrl}
-              onChange={(e) =>
-                setNewJob({ ...newJob, instagramUrl: e.target.value })
-              }
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            />
-            <select
-              value={newJob.status}
-              onChange={(e) =>
-                setNewJob({
-                  ...newJob,
-                  status: e.target.value as Job["status"],
-                })
-              }
-              className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
-            >
-              <option value="open">Open</option>
-              <option value="filled">Filled</option>
-            </select>
             <label className="flex flex-col gap-1">
               <span className="text-xs text-neutral-500">Posted date</span>
               <input
@@ -498,34 +448,16 @@ export default function AdminPage() {
                     onChange={(value) => setColumnFilter("description", value)}
                   />
                 </ColumnHeader>
-                <ColumnHeader label="Apply method">
-                  <ColumnSearch
-                    value={columnFilters.applyMethod}
-                    onChange={(value) => setColumnFilter("applyMethod", value)}
-                  />
-                </ColumnHeader>
-                <ColumnHeader label="Apply contact">
+                <ColumnHeader label="Ways to apply">
                   <ColumnSearch
                     value={columnFilters.applyContact}
                     onChange={(value) => setColumnFilter("applyContact", value)}
-                  />
-                </ColumnHeader>
-                <ColumnHeader label="Instagram URL">
-                  <ColumnSearch
-                    value={columnFilters.instagramUrl}
-                    onChange={(value) => setColumnFilter("instagramUrl", value)}
                   />
                 </ColumnHeader>
                 <ColumnHeader label="Posted date">
                   <ColumnSearch
                     value={columnFilters.postedAt}
                     onChange={(value) => setColumnFilter("postedAt", value)}
-                  />
-                </ColumnHeader>
-                <ColumnHeader label="Status">
-                  <ColumnSearch
-                    value={columnFilters.status}
-                    onChange={(value) => setColumnFilter("status", value)}
                   />
                 </ColumnHeader>
                 <th className="px-4 py-3 font-medium"></th>
@@ -585,43 +517,13 @@ export default function AdminPage() {
                     />
                   </td>
                   <td className="px-4 py-2">
-                    <select
-                      value={job.applyMethod}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "applyMethod", e.target.value)
-                      }
-                      className="rounded border border-neutral-200 px-2 py-1 text-sm focus:outline-none"
-                    >
-                      <option value="instagram">Instagram</option>
-                      <option value="email">Email</option>
-                      <option value="link">Link</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-2">
                     <input
                       value={job.applyContact}
-                      placeholder={
-                        job.applyMethod === "email"
-                          ? "email address"
-                          : job.applyMethod === "instagram"
-                          ? "@handle"
-                          : "https://..."
-                      }
+                      placeholder="Ways to apply"
                       onChange={(e) =>
                         updateLocalJob(job.id, "applyContact", e.target.value)
                       }
-                      size={inputSize(job.applyContact, 18)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.instagramUrl || ""}
-                      placeholder="https://instagram.com/..."
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "instagramUrl", e.target.value)
-                      }
-                      size={inputSize(job.instagramUrl || "", 28)}
+                      size={inputSize(job.applyContact, 24)}
                       className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
                     />
                   </td>
@@ -634,18 +536,6 @@ export default function AdminPage() {
                       }
                       className="rounded border border-neutral-200 px-2 py-1 text-sm focus:outline-none"
                     />
-                  </td>
-                  <td className="px-4 py-2">
-                    <select
-                      value={job.status}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "status", e.target.value)
-                      }
-                      className="rounded border border-neutral-200 px-2 py-1 text-sm focus:outline-none"
-                    >
-                      <option value="open">Open</option>
-                      <option value="filled">Filled</option>
-                    </select>
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     <button
@@ -666,14 +556,14 @@ export default function AdminPage() {
               ))}
               {!loading && jobs.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
                     No postings yet — add one above.
                   </td>
                 </tr>
               )}
               {!loading && jobs.length > 0 && visibleJobs.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
                     No postings match these column searches.
                   </td>
                 </tr>
