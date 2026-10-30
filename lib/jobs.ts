@@ -264,24 +264,6 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
   });
 }
 
-const COUNTRY_ALIASES: Record<string, string[]> = {
-  GB: ["uk", "great britain", "england", "scotland", "wales", "northern ireland"],
-  US: ["usa", "us", "united states of america"],
-};
-
-/** English country name for a Vercel ISO code like "AU". Null if unknown. */
-export function countryNameFromCode(countryCode: string | null): string | null {
-  const code = countryCode?.trim().toUpperCase();
-  if (!code || !/^[A-Z]{2}$/.test(code)) return null;
-  try {
-    const name = new Intl.DisplayNames(["en"], { type: "region" }).of(code);
-    if (!name || name.toUpperCase() === code) return null;
-    return name;
-  } catch {
-    return null;
-  }
-}
-
 function placeMatches(job: Job, place: string) {
   const raw = place.trim().toLowerCase();
   const city = job.city.trim().toLowerCase();
@@ -292,42 +274,6 @@ function placeMatches(job: Job, place: string) {
     return city === cityPart && (country === countryPart || country.includes(countryPart));
   }
   return city === raw || country === raw || `${city} ${country}`.includes(raw);
-}
-
-function visitorCity(value: string | null | undefined) {
-  if (!value) return "";
-  try {
-    return decodeURIComponent(value).trim().toLowerCase();
-  } catch {
-    return value.trim().toLowerCase();
-  }
-}
-
-function countryNames(countryCode: string | null) {
-  const name = countryNameFromCode(countryCode);
-  if (!name || !countryCode) return new Set<string>();
-  const code = countryCode.trim().toUpperCase();
-  return new Set([name.toLowerCase(), ...(COUNTRY_ALIASES[code] ?? [])]);
-}
-
-/**
- * Latest openings only. The newest job in the visitor's city goes first, or
- * the newest in their country when no city matches. Everything else stays in
- * date order. Vercel sends the area from the IP; it is never stored.
- */
-export function putClosestFirst(
-  jobs: Job[],
-  countryCode: string | null,
-  cityName?: string | null
-): Job[] {
-  const names = countryNames(countryCode);
-  const city = visitorCity(cityName);
-  const inCountry = (job: Job) => names.size === 0 || names.has(job.country.trim().toLowerCase());
-  const closest =
-    (city ? jobs.find((job) => job.city.trim().toLowerCase() === city && inCountry(job)) : undefined) ||
-    (names.size > 0 ? jobs.find((job) => names.has(job.country.trim().toLowerCase())) : undefined);
-  if (!closest) return jobs;
-  return [closest, ...jobs.filter((job) => job.id !== closest.id)];
 }
 
 /**

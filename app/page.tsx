@@ -1,5 +1,4 @@
-import { headers } from "next/headers";
-import { putClosestFirst, searchJobs } from "@/lib/jobs";
+import { searchJobs } from "@/lib/jobs";
 import { getCurrentUser } from "@/lib/users";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SearchForm } from "@/components/SearchForm";
@@ -52,7 +51,7 @@ export default async function Home({
   const searching = Boolean(
     q || placeLabel || pickedRoles.length || pickedRoleText.length || pickedPlaces.length
   );
-  const results = await searchJobs({
+  const jobs = await searchJobs({
     q,
     city,
     country,
@@ -61,15 +60,6 @@ export default async function Home({
     roleText: pickedRoleText,
     places: pickedPlaces,
   });
-  // Vercel sets this from the visitor's IP; it's only used for ordering, never stored.
-  const headerList = await headers();
-  const jobs = searching
-    ? results
-    : putClosestFirst(
-        results,
-        headerList.get("x-vercel-ip-country"),
-        headerList.get("x-vercel-ip-city")
-      );
   const previewCount = searching ? SEARCH_PREVIEW_COUNT : PREVIEW_COUNT;
   const visibleJobs = signedIn ? jobs : jobs.slice(0, previewCount);
   const hiddenCount = jobs.length - visibleJobs.length;
