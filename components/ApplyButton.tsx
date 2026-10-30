@@ -7,6 +7,7 @@ export const APPLY_STYLE: Record<ApplyMethod, { bg: string; dot: string }> = {
   email: { bg: "var(--apply-email-bg)", dot: "var(--apply-email-dot)" },
   instagram: { bg: "var(--apply-instagram-bg)", dot: "var(--apply-instagram-dot)" },
   link: { bg: "var(--apply-link-bg)", dot: "var(--apply-link-dot)" },
+  text: { bg: "var(--apply-link-bg)", dot: "var(--apply-link-dot)" },
 };
 
 type Apply = { href: string; label: string; method: ApplyMethod; contact: string };
