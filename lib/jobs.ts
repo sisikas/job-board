@@ -4,7 +4,7 @@ import { getSql } from "@/lib/db";
 
 export type JobStatus = "open" | "filled";
 
-export type ApplyMethod = "instagram" | "email" | "link" | "text";
+export type ApplyMethod = "instagram" | "email" | "link" | "website" | "text";
 
 export type Job = {
   id: string;
@@ -20,12 +20,65 @@ export type Job = {
   postedAt: string; // YYYY-MM-DD
 };
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Reads a free-text "Ways to apply" value from a new posting.
+ * Older postings keep the method they were saved with and never come through here.
+ */
+function classifyWaysToApply(value: string): "email" | "instagram" | "website" | "text" {
+  const contact = value.trim();
+  if (!contact) return "text";
+
+  if (/^mailto:/i.test(contact) || EMAIL_RE.test(contact)) return "email";
+  if (isInstagramContact(contact)) return "instagram";
+  if (isWebsiteContact(contact)) return "website";
+  return "text";
+}
+
+function isInstagramContact(contact: string): boolean {
+  if (/^@[\w.]+$/.test(contact)) return true;
+  try {
+    const withProto = /^https?:\/\//i.test(contact) ? contact : `https://${contact}`;
+    const host = new URL(withProto).hostname.replace(/^www\./i, "").toLowerCase();
+    return host === "instagram.com" || host === "instagr.am";
+  } catch {
+    return false;
+  }
+}
+
+function isWebsiteContact(contact: string): boolean {
+  if (/\s/.test(contact)) return false;
+  try {
+    const withProto = /^https?:\/\//i.test(contact) ? contact : `https://${contact}`;
+    return new URL(withProto).hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+function instagramHandleFromText(contact: string): string {
+  if (/^@/.test(contact) && !/^https?:/i.test(contact) && !/instagram\.com/i.test(contact)) {
+    return contact.replace(/^@/, "").split(/[/?#]/)[0];
+  }
+  try {
+    const withProto = /^https?:\/\//i.test(contact) ? contact : `https://${contact}`;
+    const part = new URL(withProto).pathname.split("/").filter(Boolean)[0] || "";
+    return part.replace(/^@/, "");
+  } catch {
+    return contact.replace(/^@/, "").replace(/\/$/, "");
+  }
+}
+
 /**
  * Turns { applyMethod, applyContact } into something renderable: a clickable
  * href, a short button label, and which method it was (so the UI can pick
  * an icon/color) — plus the raw handle/email for anywhere that wants to
  * show it (e.g. a tooltip). Centralized here so the public page and any
  * future surface stay consistent.
+ *
+ * Jobs saved as email, Instagram, or a generic link keep that button.
+ * A new posting stores plain text, and the button is chosen from that text.
  */
 export function getApplyInfo(
   job: Pick<Job, "applyMethod" | "applyContact">
@@ -34,6 +87,19 @@ export function getApplyInfo(
   if (!contact) return null;
 
   if (job.applyMethod === "text") {
+    const kind = classifyWaysToApply(contact);
+    if (kind === "email") {
+      const email = contact.replace(/^mailto:/i, "");
+      return { href: `mailto:${email}`, label: "Email to apply", method: "email", contact: email };
+    }
+    if (kind === "instagram") {
+      const handle = instagramHandleFromText(contact);
+      return { href: `https://instagram.com/${handle}`, label: "DM to apply", method: "instagram", contact: handle };
+    }
+    if (kind === "website") {
+      const href = /^https?:\/\//i.test(contact) ? contact : `https://${contact}`;
+      return { href, label: "Website to apply", method: "website", contact: href };
+    }
     return { href: "", label: "Ways to apply", method: "text", contact };
   }
 
@@ -52,7 +118,7 @@ export function getApplyInfo(
     return { href: `https://instagram.com/${handle}`, label: "DM to apply", method: "instagram", contact: handle };
   }
 
-  // generic link
+  // generic link — kept for postings saved before Ways to apply was free text
   const href = /^https?:\/\//i.test(contact) ? contact : `https://${contact}`;
   return { href, label: "Apply here", method: "link", contact };
 }

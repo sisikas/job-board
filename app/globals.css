@@ -57,6 +57,8 @@
   --apply-instagram-dot: #a8462c;
   --apply-link-bg: #e6e1d3;
   --apply-link-dot: #6b6252;
+  --apply-website-bg: #d5e6ef;
+  --apply-website-dot: #4082a1;
 }
 
 @theme inline {

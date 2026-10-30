@@ -7,6 +7,7 @@ export const APPLY_STYLE: Record<ApplyMethod, { bg: string; dot: string }> = {
   email: { bg: "var(--apply-email-bg)", dot: "var(--apply-email-dot)" },
   instagram: { bg: "var(--apply-instagram-bg)", dot: "var(--apply-instagram-dot)" },
   link: { bg: "var(--apply-link-bg)", dot: "var(--apply-link-dot)" },
+  website: { bg: "var(--apply-website-bg)", dot: "var(--apply-website-dot)" },
   text: { bg: "var(--apply-link-bg)", dot: "var(--apply-link-dot)" },
 };
 
@@ -48,11 +49,15 @@ export function ApplyButton({
         }
         style={{ background: style.bg, color: "var(--brand-ink)" }}
       >
-        <span
-          aria-hidden="true"
-          className={"rounded-full shrink-0 " + (large ? "w-2.5 h-2.5" : "w-2 h-2")}
-          style={{ background: style.dot }}
-        />
+        {apply.method === "website" ? (
+          <WebsiteIcon large={large} />
+        ) : (
+          <span
+            aria-hidden="true"
+            className={"rounded-full shrink-0 " + (large ? "w-2.5 h-2.5" : "w-2 h-2")}
+            style={{ background: style.dot }}
+          />
+        )}
         {apply.label}
         <span aria-hidden="true">&rarr;</span>
       </button>
@@ -61,6 +66,25 @@ export function ApplyButton({
         <ApplyModal apply={apply} venueName={venueName} onClose={() => setOpen(false)} />
       )}
     </>
+  );
+}
+
+function WebsiteIcon({ large }: { large: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={large ? "w-5 h-5 shrink-0" : "w-4 h-4 shrink-0"}
+      fill="none"
+      stroke="var(--apply-website-dot)"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
   );
 }
 
@@ -93,10 +117,18 @@ function ApplyModal({
       ? "To apply, send an email to this address:"
       : apply.method === "instagram"
       ? `To apply, send a DM to ${business} Instagram account:`
+      : apply.method === "website"
+      ? "To apply, open this website:"
       : "To apply, open this link:";
 
   const openLabel =
-    apply.method === "email" ? "Open in Mail" : apply.method === "instagram" ? "Open Instagram" : "Open link";
+    apply.method === "email"
+      ? "Open in Mail"
+      : apply.method === "instagram"
+      ? "Open Instagram"
+      : apply.method === "website"
+      ? "Open website"
+      : "Open link";
 
   return (
     <div
