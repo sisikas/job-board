@@ -1,17 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Job } from "@/lib/jobs";
 import { todayISODate } from "@/lib/format";
 import { COUNTRIES } from "@/lib/countries";
 import { SuggestInput } from "@/components/SuggestInput";
 
 type DraftJob = Omit<Job, "id" | "postedAt"> & { id?: string; postedAt?: string };
-
-function inputSize(value: string, min = 10) {
-  return Math.max((value || "").length + 2, min);
-}
 
 type ColumnFilters = {
   role: string;
@@ -101,9 +97,11 @@ export default function AdminPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [newJob, setNewJob] = useState<DraftJob>(blankDraft);
-  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>(emptyFilters);
+  const [menuJob, setMenuJob] = useState<Job | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   async function loadJobs() {
     setLoading(true);
@@ -123,6 +121,15 @@ export default function AdminPage() {
     loadJobs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!menuJob) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuJob(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuJob]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -146,55 +153,50 @@ export default function AdminPage() {
     setJobs([]);
   }
 
-  async function handleCreate() {
+  function startEdit(job: Job) {
+    setMenuJob(null);
+    setError("");
+    setNewJob({ ...job });
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelEdit() {
+    setError("");
+    setNewJob(blankDraft());
+  }
+
+  async function handleSave() {
     setError("");
     if (!newJob.role || !newJob.venue || !newJob.city) {
       setError("Role, venue and city are required.");
       return;
     }
-    const res = await fetch("/api/jobs", {
-      method: "POST",
+    const editing = Boolean(newJob.id);
+    setSaving(true);
+    const res = await fetch(editing ? `/api/jobs/${newJob.id}` : "/api/jobs", {
+      method: editing ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newJob),
     });
+    setSaving(false);
     if (!res.ok) {
-      setError("Could not create posting.");
+      setError(editing ? "Could not save changes." : "Could not create posting.");
       return;
     }
     setNewJob(blankDraft());
     loadJobs();
   }
 
-  async function handleUpdate(job: Job) {
-    setSavingId(job.id);
-    setError("");
-    const res = await fetch(`/api/jobs/${job.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(job),
-    });
-    setSavingId(null);
-    if (!res.ok) {
-      setError("Could not save changes.");
-      return;
-    }
-    loadJobs();
-  }
-
   async function handleDelete(id: string) {
+    setMenuJob(null);
     if (!confirm("Delete this posting? This can't be undone.")) return;
     const res = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
     if (!res.ok) {
       setError("Could not delete posting.");
       return;
     }
+    if (newJob.id === id) setNewJob(blankDraft());
     loadJobs();
-  }
-
-  function updateLocalJob(id: string, field: keyof Job, value: string) {
-    setJobs((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, [field]: value } : j))
-    );
   }
 
   const usedCities = useMemo(() => {
@@ -345,11 +347,12 @@ export default function AdminPage() {
 
         {/* Add new posting */}
         <form
+          ref={formRef}
           onSubmit={(e) => e.preventDefault()}
-          className="mb-8 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"
+          className="mb-8 scroll-mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-sm"
         >
           <h2 className="text-sm font-semibold text-neutral-900 mb-3">
-            Add a new posting
+            {newJob.id ? "Edit posting" : "Add a new posting"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <input
@@ -415,13 +418,25 @@ export default function AdminPage() {
               className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 sm:col-span-2 lg:col-span-3"
             />
           </div>
-          <button
-            type="button"
-            onClick={handleCreate}
-            className="mt-3 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
-          >
-            Add posting
-          </button>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving…" : newJob.id ? "Save changes" : "Add posting"}
+            </button>
+            {newJob.id && (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
 
         {/* Existing postings table — wide enough for full values; scroll sideways for the rest */}
@@ -477,121 +492,59 @@ export default function AdminPage() {
                     onChange={(value) => setColumnFilter("postedAt", value)}
                   />
                 </ColumnHeader>
-                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {visibleJobs.map((job) => (
-                <tr key={job.id} className="border-b border-neutral-100 last:border-0 whitespace-nowrap">
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.role}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "role", e.target.value)
-                      }
-                      size={inputSize(job.role, 12)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
+                <tr
+                  key={job.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${job.role}, ${job.venue}`}
+                  onClick={() => setMenuJob(job)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setMenuJob(job);
+                    }
+                  }}
+                  className={
+                    "border-b border-neutral-100 last:border-0 whitespace-nowrap cursor-pointer hover:bg-neutral-50 " +
+                    (newJob.id === job.id || menuJob?.id === job.id ? "bg-neutral-50" : "")
+                  }
+                >
+                  <td className="px-4 py-3">{job.role}</td>
+                  <td className="px-4 py-3">{job.venue}</td>
+                  <td className="px-4 py-3">{job.city}</td>
+                  <td className="px-4 py-3">{job.country}</td>
+                  <td className="px-4 py-3">
+                    <span className="block max-w-xs truncate" title={job.description}>
+                      {job.description}
+                    </span>
                   </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.venue}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "venue", e.target.value)
-                      }
-                      size={inputSize(job.venue, 14)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
+                  <td className="px-4 py-3">
+                    <span className="block max-w-xs truncate" title={job.applyContact}>
+                      {job.applyContact}
+                    </span>
                   </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.city}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "city", e.target.value)
-                      }
-                      size={inputSize(job.city, 10)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
+                  <td className="px-4 py-3">
+                    <span className="block max-w-xs truncate" title={job.instagramUrl}>
+                      {job.instagramUrl}
+                    </span>
                   </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.country}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "country", e.target.value)
-                      }
-                      size={inputSize(job.country, 10)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.description}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "description", e.target.value)
-                      }
-                      size={inputSize(job.description, 28)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.applyContact}
-                      placeholder="Ways to apply"
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "applyContact", e.target.value)
-                      }
-                      size={inputSize(job.applyContact, 24)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={job.instagramUrl || ""}
-                      placeholder="Instagram Business URL"
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "instagramUrl", e.target.value)
-                      }
-                      size={inputSize(job.instagramUrl || "", 28)}
-                      className="rounded border border-transparent hover:border-neutral-200 focus:border-neutral-400 px-2 py-1 focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="date"
-                      value={job.postedAt || ""}
-                      onChange={(e) =>
-                        updateLocalJob(job.id, "postedAt", e.target.value)
-                      }
-                      className="rounded border border-neutral-200 px-2 py-1 text-sm focus:outline-none"
-                    />
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <button
-                      onClick={() => handleUpdate(job)}
-                      disabled={savingId === job.id}
-                      className="text-neutral-900 font-medium hover:underline mr-3 disabled:opacity-50"
-                    >
-                      {savingId === job.id ? "Saving…" : "Save"}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(job.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </td>
+                  <td className="px-4 py-3">{job.postedAt}</td>
                 </tr>
               ))}
               {!loading && jobs.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
                     No postings yet — add one above.
                   </td>
                 </tr>
               )}
               {!loading && jobs.length > 0 && visibleJobs.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
                     No postings match these column searches.
                   </td>
                 </tr>
@@ -599,6 +552,56 @@ export default function AdminPage() {
             </tbody>
           </table>
         </div>
+
+        {menuJob && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(33, 28, 20, 0.5)" }}
+            onClick={() => setMenuJob(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${menuJob.role} at ${menuJob.venue}`}
+          >
+            <div
+              className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-base font-semibold text-neutral-900">{menuJob.role}</p>
+                  <p className="mt-0.5 text-sm text-neutral-500">
+                    {menuJob.venue}
+                    {menuJob.city ? ` · ${menuJob.city}` : ""}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMenuJob(null)}
+                  aria-label="Close"
+                  className="shrink-0 text-xl leading-none text-neutral-400 hover:text-neutral-900"
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="mt-5 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => startEdit(menuJob)}
+                  className="rounded-lg bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(menuJob.id)}
+                  className="rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
