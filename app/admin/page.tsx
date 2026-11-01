@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AdminNav } from "@/components/AdminNav";
 import type { Job } from "@/lib/jobs";
 import { todayISODate } from "@/lib/format";
 import { COUNTRIES } from "@/lib/countries";
@@ -145,12 +145,6 @@ export default function AdminPage() {
     }
     setPassword("");
     loadJobs();
-  }
-
-  async function handleLogout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    setAuthed(false);
-    setJobs([]);
   }
 
   function startEdit(job: Job) {
@@ -298,43 +292,16 @@ export default function AdminPage() {
 
   return (
     <div className="flex-1 bg-neutral-50">
+      <AdminNav current="postings" />
       <header className="border-b border-neutral-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900">
-              Manage job postings
-            </h1>
-            <p className="text-sm text-neutral-500 mt-0.5">
-              Add, edit, or remove postings. Changes appear on
-              the public page immediately.
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/admin/analytics"
-              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
-            >
-              Visits
-            </Link>
-            <Link
-              href="/admin/signups"
-              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
-            >
-              Sign-ups
-            </Link>
-            <Link
-              href="/admin/onboarding"
-              className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 transition-colors"
-            >
-              Onboarding
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
-            >
-              Log out
-            </button>
-          </div>
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <h1 className="text-xl font-semibold text-neutral-900">
+            Manage job postings
+          </h1>
+          <p className="text-sm text-neutral-500 mt-0.5">
+            Add, edit, or remove postings. Changes appear on
+            the public page immediately.
+          </p>
         </div>
       </header>
 

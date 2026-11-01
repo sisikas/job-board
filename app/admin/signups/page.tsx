@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdminNav } from "@/components/AdminNav";
 import { isAuthed } from "@/lib/auth";
 import { listSignups } from "@/lib/users";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
@@ -17,34 +17,13 @@ export default async function SignupsPage() {
 
   return (
     <div className="flex-1 bg-neutral-50">
+      <AdminNav current="signups" />
       <header className="border-b border-neutral-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900">Sign-ups</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">
-              Everyone who has created an account, newest first.
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/admin/onboarding"
-              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
-            >
-              Onboarding
-            </Link>
-            <Link
-              href="/admin/analytics"
-              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
-            >
-              Visits
-            </Link>
-            <Link
-              href="/admin"
-              className="text-sm text-neutral-500 hover:text-neutral-900 underline underline-offset-2"
-            >
-              &larr; Job postings
-            </Link>
-          </div>
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <h1 className="text-xl font-semibold text-neutral-900">Sign-ups</h1>
+          <p className="text-sm text-neutral-500 mt-0.5">
+            Everyone who has created an account, newest first.
+          </p>
         </div>
       </header>
 
