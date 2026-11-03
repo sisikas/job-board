@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/AdminNav";
+import { CopyAlertEmail } from "@/components/CopyAlertEmail";
 import { isAuthed } from "@/lib/auth";
 import { getAlertPreview, parseAlertSince, renderAlertEmail } from "@/lib/alerts";
 
@@ -41,8 +42,8 @@ export default async function AlertPreviewPage({
           </h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             {person
-              ? "This is the message they would receive. Nothing is sent from here. The one-click unsubscribe link is added when sending is connected."
-              : "Nothing is sent from here."}
+              ? "Copy the subject and the message, then paste them into a new Gmail email. Nothing is sent from this page."
+              : "Nothing is sent from this page."}
           </p>
         </div>
       </header>
@@ -53,11 +54,10 @@ export default async function AlertPreviewPage({
             <p className="mb-3 text-sm text-neutral-700">
               <span className="font-medium text-neutral-900">Subject:</span> {email.subject}
             </p>
-            <iframe
-              title={`Email preview for ${person?.email ?? "subscriber"}`}
-              sandbox=""
-              srcDoc={email.html}
-              className="h-[640px] w-full rounded-xl border border-neutral-200 bg-white"
+            <CopyAlertEmail subject={email.subject} html={email.html} text={email.text} />
+            <div
+              className="rounded-xl border border-neutral-200 bg-white px-6 py-8"
+              dangerouslySetInnerHTML={{ __html: email.html }}
             />
             <details className="mt-4 rounded-xl border border-neutral-200 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-900">
