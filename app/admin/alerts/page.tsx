@@ -64,7 +64,7 @@ function JobList({ jobs }: { jobs: AlertJob[] }) {
           </Link>
           <span className="text-neutral-700"> at {job.venue}</span>
           <p className="text-neutral-500">
-            {formatJobPlace(job) || "No city"} · {formatDate(job.postedAt)}
+            {formatJobPlace(job) || "No city"} · Admin {formatDate(job.adminDate)}
           </p>
         </li>
       ))}
@@ -103,7 +103,7 @@ export default async function AlertsPage({
         <form method="get" className="mb-6 rounded-xl border border-neutral-200 bg-white p-4">
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm text-neutral-700">
-              Include jobs posted on or after
+              Include jobs with an admin date on or after
               <input
                 type="date"
                 name="since"
@@ -138,15 +138,19 @@ export default async function AlertsPage({
               that country. Anywhere covers every city.
             </li>
             <li>All of one person&apos;s matches go in a single email.</li>
-            <li>After someone has been emailed, later runs only include jobs posted after that send.</li>
+            <li>
+              The job&apos;s admin date must be after the day they subscribed. If they have already
+              been emailed, it must also be after that last email. The employer&apos;s posted date is
+              not used.
+            </li>
           </ul>
           {invalidSince && (
             <p className="mt-3 text-sm text-red-700">Enter a real date. The preview is showing every job.</p>
           )}
           {!since && !invalidSince && (
             <p className="mt-3 text-sm text-neutral-600">
-              No start date yet, so this preview includes every posted job. Set the date when you decide
-              which day alerts should begin.
+              No start date yet, so this preview includes every job that has an admin date. Set the
+              date when you decide which day alerts should begin.
             </p>
           )}
         </form>
@@ -239,8 +243,8 @@ export default async function AlertsPage({
             Jobs that would not be emailed ({preview.quietJobs.length} of {preview.jobCount})
           </summary>
           <p className="border-t border-neutral-100 px-4 py-3 text-sm text-neutral-500">
-            A job is listed here when no subscriber&apos;s role and place match it, or their last
-            email already covers its posted date.
+            A job is listed here when nobody&apos;s role and place match it, or its admin date is
+            not after the day they subscribed and, when they have been emailed, that last email.
           </p>
           {preview.quietJobs.length > 0 && (
             <ul className="divide-y divide-neutral-100 border-t border-neutral-100">
@@ -251,7 +255,7 @@ export default async function AlertsPage({
                   </Link>
                   <span className="text-neutral-700"> at {job.venue}</span>
                   <p className="text-neutral-500">
-                    {formatJobPlace(job) || "No city"} · {formatDate(job.postedAt)}
+                    {formatJobPlace(job) || "No city"} · Admin {formatDate(job.adminDate)}
                   </p>
                 </li>
               ))}

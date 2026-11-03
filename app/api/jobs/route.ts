@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createJob, getAllJobs, searchJobs } from "@/lib/jobs";
+import { createJob, getAdminJobs, searchJobs } from "@/lib/jobs";
 import { isAuthed } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     if (!(await isAuthed())) {
       return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
-    const jobs = await getAllJobs();
+    const jobs = await getAdminJobs();
     return NextResponse.json({ jobs });
   }
 
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     instagramUrl: body.instagramUrl || "",
     status: body.status === "filled" ? "filled" : "open",
     postedAt: typeof body.postedAt === "string" ? body.postedAt : undefined,
+    adminDate: typeof body.adminDate === "string" ? body.adminDate : undefined,
   });
 
   return NextResponse.json({ job }, { status: 201 });

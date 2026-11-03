@@ -20,6 +20,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     instagramUrl: body.instagramUrl,
     status: body.status,
     postedAt: body.postedAt,
+    adminDate: body.adminDate,
   });
 
   if (!job) {

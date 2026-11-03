@@ -77,6 +77,12 @@ async function main() {
       posted_at     text NOT NULL
     )
   `;
+  await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS admin_date text`;
+  await sql`
+    UPDATE jobs
+    SET admin_date = posted_at
+    WHERE admin_date IS NULL OR btrim(admin_date) = ''
+  `;
   console.log("✔ Table `jobs` is ready.");
 
   // Keep in sync with ensureTables() in lib/users.ts.
@@ -144,11 +150,12 @@ async function main() {
     await sql`
       INSERT INTO jobs (
         id, role, venue, city, country, description,
-        apply_method, apply_contact, instagram_url, status, posted_at
+        apply_method, apply_contact, instagram_url, status, posted_at, admin_date
       ) VALUES (
         ${j.id}, ${j.role}, ${j.venue}, ${j.city}, ${j.country ?? ""}, ${j.description ?? ""},
         ${j.applyMethod ?? "instagram"}, ${j.applyContact ?? ""}, ${j.instagramUrl ?? ""},
-        ${j.status ?? "open"}, ${j.postedAt ?? new Date().toISOString().slice(0, 10)}
+        ${j.status ?? "open"}, ${j.postedAt ?? new Date().toISOString().slice(0, 10)},
+        ${j.postedAt ?? new Date().toISOString().slice(0, 10)}
       )
       ON CONFLICT (id) DO UPDATE SET
         role = EXCLUDED.role,
@@ -160,7 +167,8 @@ async function main() {
         apply_contact = EXCLUDED.apply_contact,
         instagram_url = EXCLUDED.instagram_url,
         status = EXCLUDED.status,
-        posted_at = EXCLUDED.posted_at
+        posted_at = EXCLUDED.posted_at,
+        admin_date = COALESCE(jobs.admin_date, EXCLUDED.admin_date)
     `;
     imported += 1;
   }

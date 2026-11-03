@@ -17,7 +17,8 @@ export type Job = {
   applyContact: string; // an @handle, an email address, or a URL — meaning depends on applyMethod
   instagramUrl: string; // business Instagram — full URL, instagram.com/..., or @handle
   status: JobStatus;
-  postedAt: string; // YYYY-MM-DD
+  postedAt: string; // YYYY-MM-DD, shown to the public
+  adminDate?: string; // YYYY-MM-DD, alerts only — never shown on the public site
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -171,7 +172,39 @@ type JobRow = {
   instagram_url: string;
   status: string;
   posted_at: string;
+  admin_date?: string | null;
 };
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+let columnsReady: Promise<void> | undefined;
+
+/** Adds the private alert date and copies the posted date onto existing jobs. */
+export function ensureJobColumns(): Promise<void> {
+  if (!columnsReady) {
+    const sql = getSql();
+    columnsReady = (async () => {
+      await sql`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS admin_date text`;
+      await sql`
+        UPDATE jobs
+        SET admin_date = posted_at
+        WHERE admin_date IS NULL OR btrim(admin_date) = ''
+      `;
+    })().catch((err) => {
+      columnsReady = undefined;
+      throw err;
+    });
+  }
+  return columnsReady;
+}
+
+function cleanDate(value: string | undefined, fallback: string): string {
+  const trimmed = value?.trim() ?? "";
+  if (!DATE_RE.test(trimmed)) return fallback;
+  const parsed = new Date(`${trimmed}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return fallback;
+  return parsed.toISOString().slice(0, 10) === trimmed ? trimmed : fallback;
+}
 
 function rowToJob(row: JobRow): Job {
   return {
@@ -186,15 +219,41 @@ function rowToJob(row: JobRow): Job {
     instagramUrl: row.instagram_url ?? "",
     status: (row.status as JobStatus) ?? "open",
     postedAt: row.posted_at,
+    ...(row.admin_date ? { adminDate: row.admin_date } : {}),
   };
 }
 
 export async function getAllJobs(): Promise<Job[]> {
+  await ensureJobColumns();
   const sql = getSql();
-  // newest first
+  // newest first. The public select leaves out admin_date.
   const rows = await sql<JobRow[]>`
     SELECT id, role, venue, city, country, description,
            apply_method, apply_contact, instagram_url, status, posted_at
+    FROM jobs
+    ORDER BY posted_at DESC, role ASC
+  `;
+  return rows.map(rowToJob);
+}
+
+async function getAdminJob(id: string): Promise<Job | undefined> {
+  await ensureJobColumns();
+  const rows = await getSql()<JobRow[]>`
+    SELECT id, role, venue, city, country, description,
+           apply_method, apply_contact, instagram_url, status, posted_at, admin_date
+    FROM jobs
+    WHERE id = ${id}
+    LIMIT 1
+  `;
+  return rows[0] ? rowToJob(rows[0]) : undefined;
+}
+
+/** Every posting, including the private admin date. Admin-only. */
+export async function getAdminJobs(): Promise<Job[]> {
+  await ensureJobColumns();
+  const rows = await getSql()<JobRow[]>`
+    SELECT id, role, venue, city, country, description,
+           apply_method, apply_contact, instagram_url, status, posted_at, admin_date
     FROM jobs
     ORDER BY posted_at DESC, role ASC
   `;
@@ -304,8 +363,8 @@ export async function getLocations(): Promise<{ groups: LocationGroup[] }> {
 }
 
 export async function getJob(id: string): Promise<Job | undefined> {
-  const sql = getSql();
-  const rows = await sql<JobRow[]>`
+  await ensureJobColumns();
+  const rows = await getSql()<JobRow[]>`
     SELECT id, role, venue, city, country, description,
            apply_method, apply_contact, instagram_url, status, posted_at
     FROM jobs
@@ -340,23 +399,28 @@ export async function getSimilarJobs(job: Job, limit = 3): Promise<Job[]> {
 }
 
 export async function createJob(
-  input: Omit<Job, "id" | "postedAt"> & { postedAt?: string }
+  input: Omit<Job, "id" | "postedAt" | "adminDate"> & { postedAt?: string; adminDate?: string }
 ): Promise<Job> {
+  await ensureJobColumns();
   const sql = getSql();
+  const postedAt = cleanDate(input.postedAt, todayISODate());
+  const adminDate = cleanDate(input.adminDate, postedAt);
   const job: Job = {
     ...input,
     instagramUrl: input.instagramUrl?.trim() || "",
     id: randomUUID(),
-    postedAt: input.postedAt?.trim() || todayISODate(),
+    postedAt,
+    adminDate,
   };
 
   await sql`
     INSERT INTO jobs (
       id, role, venue, city, country, description,
-      apply_method, apply_contact, instagram_url, status, posted_at
+      apply_method, apply_contact, instagram_url, status, posted_at, admin_date
     ) VALUES (
       ${job.id}, ${job.role}, ${job.venue}, ${job.city}, ${job.country}, ${job.description},
-      ${job.applyMethod}, ${job.applyContact}, ${job.instagramUrl}, ${job.status}, ${job.postedAt}
+      ${job.applyMethod}, ${job.applyContact}, ${job.instagramUrl}, ${job.status}, ${job.postedAt},
+      ${adminDate}
     )
   `;
 
@@ -369,7 +433,8 @@ export async function updateJob(
 ): Promise<Job | undefined> {
   // Read-merge-write so a partial update (e.g. only { status }) can never wipe
   // out fields the caller simply didn't send — same semantics as before.
-  const existing = await getJob(id);
+  await ensureJobColumns();
+  const existing = await getAdminJob(id);
   if (!existing) return undefined;
 
   const defined = Object.fromEntries(
@@ -377,6 +442,10 @@ export async function updateJob(
   ) as Partial<Job>;
 
   const merged: Job = { ...existing, ...defined };
+  const postedAt = cleanDate(merged.postedAt, existing.postedAt);
+  const adminDate = cleanDate(merged.adminDate, existing.adminDate || existing.postedAt);
+  merged.postedAt = postedAt;
+  merged.adminDate = adminDate;
 
   const sql = getSql();
   await sql`
@@ -390,7 +459,8 @@ export async function updateJob(
       apply_contact = ${merged.applyContact},
       instagram_url = ${merged.instagramUrl},
       status = ${merged.status},
-      posted_at = ${merged.postedAt}
+      posted_at = ${postedAt},
+      admin_date = ${adminDate}
     WHERE id = ${id}
   `;
 

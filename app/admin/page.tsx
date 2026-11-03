@@ -7,7 +7,11 @@ import { todayISODate } from "@/lib/format";
 import { COUNTRIES } from "@/lib/countries";
 import { SuggestInput } from "@/components/SuggestInput";
 
-type DraftJob = Omit<Job, "id" | "postedAt"> & { id?: string; postedAt?: string };
+type DraftJob = Omit<Job, "id" | "postedAt" | "adminDate"> & {
+  id?: string;
+  postedAt?: string;
+  adminDate?: string;
+};
 
 type ColumnFilters = {
   role: string;
@@ -18,6 +22,7 @@ type ColumnFilters = {
   applyContact: string;
   instagramUrl: string;
   postedAt: string;
+  adminDate: string;
 };
 
 function emptyFilters(): ColumnFilters {
@@ -30,6 +35,7 @@ function emptyFilters(): ColumnFilters {
     applyContact: "",
     instagramUrl: "",
     postedAt: "",
+    adminDate: "",
   };
 }
 
@@ -86,6 +92,7 @@ function blankDraft(): DraftJob {
     instagramUrl: "",
     status: "open",
     postedAt: todayISODate(),
+    adminDate: todayISODate(),
   };
 }
 
@@ -239,7 +246,8 @@ export default function AdminPage() {
         matchesFilter(job.description, columnFilters.description) &&
         matchesFilter(job.applyContact, columnFilters.applyContact) &&
         matchesFilter(job.instagramUrl, columnFilters.instagramUrl) &&
-        matchesFilter(job.postedAt, columnFilters.postedAt)
+        matchesFilter(job.postedAt, columnFilters.postedAt) &&
+        matchesFilter(job.adminDate ?? "", columnFilters.adminDate)
     );
   }, [jobs, columnFilters]);
 
@@ -375,6 +383,18 @@ export default function AdminPage() {
                 className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
               />
             </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs text-neutral-500">Admin date</span>
+              <input
+                type="date"
+                value={newJob.adminDate || ""}
+                onChange={(e) =>
+                  setNewJob({ ...newJob, adminDate: e.target.value })
+                }
+                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+              />
+              <span className="text-xs text-neutral-400">For alerts only. Not shown on the site.</span>
+            </label>
             <textarea
               placeholder="Brief description"
               value={newJob.description}
@@ -459,6 +479,12 @@ export default function AdminPage() {
                     onChange={(value) => setColumnFilter("postedAt", value)}
                   />
                 </ColumnHeader>
+                <ColumnHeader label="Admin date">
+                  <ColumnSearch
+                    value={columnFilters.adminDate}
+                    onChange={(value) => setColumnFilter("adminDate", value)}
+                  />
+                </ColumnHeader>
               </tr>
             </thead>
             <tbody>
@@ -500,18 +526,19 @@ export default function AdminPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">{job.postedAt}</td>
+                  <td className="px-4 py-3">{job.adminDate}</td>
                 </tr>
               ))}
               {!loading && jobs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-400">
                     No postings yet — add one above.
                   </td>
                 </tr>
               )}
               {!loading && jobs.length > 0 && visibleJobs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-neutral-400">
+                  <td colSpan={9} className="px-4 py-8 text-center text-neutral-400">
                     No postings match these column searches.
                   </td>
                 </tr>

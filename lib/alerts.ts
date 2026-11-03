@@ -1,18 +1,21 @@
 import { getSql } from "@/lib/db";
+import { ensureJobColumns } from "@/lib/jobs";
 import { ensureUserTables } from "@/lib/users";
 
 /**
  * Read-only preview of who would receive a job alert.
  *
- * Matching starts from jobs posted on or after `since` (every job, when
- * `since` is null). A subscribed person gets a job when all of these hold:
+ * Matching starts from jobs whose admin date is on or after `since` (every
+ * job, when `since` is null). The employer's posted date is not used. A
+ * subscribed person gets a job when all of these hold:
  * - one of their roles is that job's role (Chef and Sous Chef stay separate).
  *   "part-time" and "private", in any spacing or punctuation, are ignored on
  *   the job title, so "Chef (part-time)" and "Private Chef" match Chef.
  * - one of their places is the job's city, the job's country, or Anywhere
  * - they asked for alerts and have not unsubscribed. People who said no at
  *   signup stay out, because email_alerts is false for them.
- * - the job's posted date is after the UTC date of their last alert, if any
+ * - the job's admin date is after the UTC day they subscribed
+ * - the job's admin date is after the UTC day of their last alert, if any
  *
  * Callers group the rows so each person appears once, with every matching job.
  * Nothing here sends mail or writes a last-sent time.
@@ -25,6 +28,7 @@ export type AlertJob = {
   city: string;
   country: string;
   postedAt: string;
+  adminDate: string;
   description: string;
 };
 
@@ -33,6 +37,7 @@ export type AlertSubscriber = {
   email: string;
   roles: string[];
   locations: string[];
+  subscribedAt: Date | null;
   lastSentAt: Date | null;
   jobs: AlertJob[];
   /** Roles and places on their list that matched no eligible job this run. */
@@ -54,12 +59,14 @@ type MatchRow = {
   roles: string[] | null;
   locations: string[] | null;
   alerts_last_sent_at: Date | string | null;
+  onboarded_at: Date | string | null;
   job_id: string;
   job_role: string;
   venue: string;
   city: string;
   country: string | null;
   posted_at: string;
+  admin_date: string;
   description: string | null;
 };
 
@@ -70,6 +77,7 @@ type JobRow = {
   city: string;
   country: string | null;
   posted_at: string;
+  admin_date: string;
   description: string | null;
 };
 
@@ -79,6 +87,7 @@ type SubscriberRow = {
   roles: string[] | null;
   locations: string[] | null;
   alerts_last_sent_at: Date | string | null;
+  onboarded_at: Date | string | null;
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -117,6 +126,7 @@ function jobFromRow(row: JobRow): AlertJob {
     city: row.city,
     country: row.country ?? "",
     postedAt: row.posted_at,
+    adminDate: row.admin_date,
     description: row.description ?? "",
   };
 }
@@ -165,16 +175,24 @@ function roleMatches(wanted: string, jobRole: string): boolean {
   return role === titled || role === coreRole(jobRole);
 }
 
-function postedAfterLastSend(postedAt: string, lastSentAt: Date | null): boolean {
+/** Admin date must be after signup, and after the last email when one exists. */
+function eligibleByDate(
+  adminDate: string,
+  subscribedAt: Date | null,
+  lastSentAt: Date | null
+): boolean {
+  if (!subscribedAt || !(adminDate > utcDay(subscribedAt))) return false;
   if (!lastSentAt) return true;
-  return postedAt > utcDay(lastSentAt);
+  return adminDate > utcDay(lastSentAt);
 }
 
 function unmatchedPreferences(
-  person: Pick<AlertSubscriber, "roles" | "locations" | "lastSentAt">,
+  person: Pick<AlertSubscriber, "roles" | "locations" | "subscribedAt" | "lastSentAt">,
   jobs: AlertJob[]
 ): string[] {
-  const eligible = jobs.filter((job) => postedAfterLastSend(job.postedAt, person.lastSentAt));
+  const eligible = jobs.filter((job) =>
+    eligibleByDate(job.adminDate, person.subscribedAt, person.lastSentAt)
+  );
   const roles = person.roles.filter(
     (role) =>
       !eligible.some(
@@ -292,10 +310,10 @@ export function renderAlertEmail(
 }
 
 export async function getAlertPreview(since: string | null): Promise<AlertPreview> {
-  await ensureUserTables();
+  await Promise.all([ensureUserTables(), ensureJobColumns()]);
   const sql = getSql();
-  const postedCutoff = since ? sql`j.posted_at >= ${since}` : sql`TRUE`;
-  const jobCutoff = since ? sql`posted_at >= ${since}` : sql`TRUE`;
+  const adminCutoff = since ? sql`j.admin_date >= ${since}` : sql`TRUE`;
+  const jobCutoff = since ? sql`admin_date >= ${since}` : sql`TRUE`;
 
   const [matchRows, jobRows, subscriberRows, optedOutRows] = await Promise.all([
     sql<MatchRow[]>`
@@ -305,12 +323,14 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
         u.roles,
         u.locations,
         u.alerts_last_sent_at,
+        u.onboarded_at,
         j.id AS job_id,
         j.role AS job_role,
         j.venue,
         j.city,
         j.country,
         j.posted_at,
+        j.admin_date,
         j.description
       FROM jobs j
       JOIN users u
@@ -350,23 +370,25 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
              OR (btrim(j.country) <> '' AND lower(btrim(place)) = lower(btrim(j.country)))
            )
        )
-      WHERE j.posted_at ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-        AND ${postedCutoff}
+      WHERE j.admin_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+        AND ${adminCutoff}
+        AND u.onboarded_at IS NOT NULL
+        AND j.admin_date > to_char(u.onboarded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
         AND (
           u.alerts_last_sent_at IS NULL
-          OR j.posted_at > to_char(u.alerts_last_sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
+          OR j.admin_date > to_char(u.alerts_last_sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
         )
-      ORDER BY u.email ASC, j.posted_at DESC, j.role ASC
+      ORDER BY u.email ASC, j.admin_date DESC, j.role ASC
     `,
     sql<JobRow[]>`
-      SELECT id, role, venue, city, country, posted_at, description
+      SELECT id, role, venue, city, country, posted_at, admin_date, description
       FROM jobs
-      WHERE posted_at ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+      WHERE admin_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
         AND ${jobCutoff}
-      ORDER BY posted_at DESC, role ASC
+      ORDER BY admin_date DESC, role ASC
     `,
     sql<SubscriberRow[]>`
-      SELECT id, email, roles, locations, alerts_last_sent_at
+      SELECT id, email, roles, locations, alerts_last_sent_at, onboarded_at
       FROM users
       WHERE email_alerts = true
         AND unsubscribed_at IS NULL
@@ -390,6 +412,7 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       email: row.email,
       roles: cleanList(row.roles),
       locations: cleanList(row.locations),
+      subscribedAt: asDate(row.onboarded_at),
       lastSentAt: asDate(row.alerts_last_sent_at),
       jobs: [],
       unmatchedPreferences: [],
@@ -405,6 +428,7 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
         email: row.email,
         roles: cleanList(row.roles),
         locations: cleanList(row.locations),
+        subscribedAt: asDate(row.onboarded_at),
         lastSentAt: asDate(row.alerts_last_sent_at),
         jobs: [],
         unmatchedPreferences: [],
@@ -418,6 +442,7 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       city: row.city,
       country: row.country,
       posted_at: row.posted_at,
+      admin_date: row.admin_date,
       description: row.description,
     });
     if (!person.jobs.some((existing) => existing.id === job.id)) person.jobs.push(job);
@@ -427,7 +452,7 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
   const subscribers = [...people.values()];
   for (const person of subscribers) {
     person.unmatchedPreferences = unmatchedPreferences(person, jobs);
-    person.jobs.sort((a, b) => b.postedAt.localeCompare(a.postedAt) || a.role.localeCompare(b.role));
+    person.jobs.sort((a, b) => b.adminDate.localeCompare(a.adminDate) || a.role.localeCompare(b.role));
   }
   subscribers.sort((a, b) => a.email.localeCompare(b.email));
 
