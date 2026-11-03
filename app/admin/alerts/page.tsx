@@ -184,8 +184,8 @@ export default async function AlertsPage({
                     </span>
                     <Link
                       href={alertsHref(since, person.id)}
-                      className="inline-flex rounded-full px-3 py-1 text-sm font-bold"
-                      style={{ background: "#e8896a", color: "var(--brand-ink)" }}
+                      className="inline-flex rounded-full px-3 py-1 text-sm font-bold text-white"
+                      style={{ background: "var(--brand-logo-green)" }}
                     >
                       Preview email
                     </Link>
