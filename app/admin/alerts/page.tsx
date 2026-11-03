@@ -1,0 +1,251 @@
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AdminNav } from "@/components/AdminNav";
+import { isAuthed } from "@/lib/auth";
+import { LocalTime } from "@/components/LocalTime";
+import {
+  formatJobPlace,
+  getAlertPreview,
+  parseAlertSince,
+  type AlertJob,
+  type AlertSubscriber,
+} from "@/lib/alerts";
+import { formatDate } from "@/lib/format";
+
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Job alerts — Admin" };
+
+function alertsHref(since: string | null, userId?: string) {
+  const path = userId ? `/admin/alerts/${userId}` : "/admin/alerts";
+  return since ? `${path}?since=${encodeURIComponent(since)}` : path;
+}
+
+function Count({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-white px-4 py-3">
+      <p className="text-2xl font-semibold text-neutral-900">{value}</p>
+      <p className="mt-0.5 text-sm text-neutral-500">{label}</p>
+    </div>
+  );
+}
+
+function PreferenceBlock({ person }: { person: AlertSubscriber }) {
+  return (
+    <div className="space-y-2">
+      <div>
+        <p className="text-xs uppercase tracking-wide text-neutral-500">Roles</p>
+        <p className="mt-0.5 text-neutral-800">{person.roles.join(", ") || "—"}</p>
+      </div>
+      <div>
+        <p className="text-xs uppercase tracking-wide text-neutral-500">Places</p>
+        <p className="mt-0.5 text-neutral-800">{person.locations.join(", ") || "—"}</p>
+      </div>
+      {person.unmatchedPreferences.length > 0 && (
+        <p className="text-amber-800">
+          No job matched: {person.unmatchedPreferences.join(", ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function LastSent({ person }: { person: AlertSubscriber }) {
+  if (!person.lastSentAt) return <span className="text-neutral-500">Never</span>;
+  return <LocalTime iso={person.lastSentAt.toISOString()} />;
+}
+
+function JobList({ jobs }: { jobs: AlertJob[] }) {
+  return (
+    <ul className="space-y-2">
+      {jobs.map((job) => (
+        <li key={job.id}>
+          <Link href={`/jobs/${job.id}`} className="font-medium text-neutral-900 hover:underline">
+            {job.role}
+          </Link>
+          <span className="text-neutral-700"> at {job.venue}</span>
+          <p className="text-neutral-500">
+            {formatJobPlace(job) || "No city"} · {formatDate(job.postedAt)}
+          </p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default async function AlertsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ since?: string }>;
+}) {
+  if (!(await isAuthed())) redirect("/admin");
+
+  const params = await searchParams;
+  const rawSince = params.since?.trim() ?? "";
+  const since = parseAlertSince(rawSince);
+  const invalidSince = rawSince !== "" && since === null;
+  const preview = await getAlertPreview(since);
+  const emailedJobCount = new Set(preview.recipients.flatMap((person) => person.jobs.map((job) => job.id))).size;
+
+  return (
+    <div className="flex-1 bg-neutral-50">
+      <AdminNav current="alerts" />
+      <header className="border-b border-neutral-200 bg-white">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <h1 className="text-xl font-semibold text-neutral-900">Job alerts</h1>
+          <p className="mt-0.5 text-sm text-neutral-500">
+            Who would get an email if you sent now, and which jobs would be in it.
+            This page only previews. It does not send email or change anyone&apos;s last-emailed date.
+          </p>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        <form method="get" className="mb-6 rounded-xl border border-neutral-200 bg-white p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 text-sm text-neutral-700">
+              Include jobs posted on or after
+              <input
+                type="date"
+                name="since"
+                defaultValue={since ?? ""}
+                className="rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900"
+              />
+            </label>
+            <button
+              type="submit"
+              className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700"
+            >
+              Update preview
+            </button>
+            {since && (
+              <a href="/admin/alerts" className="text-sm text-neutral-500 underline underline-offset-2">
+                Show every job
+              </a>
+            )}
+          </div>
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-neutral-600">
+            <li>A person is included when they are still subscribed.</li>
+            <li>
+              The job&apos;s role must be one of their roles. Chef and Sous Chef stay separate.
+              Part-time and private versions of that same role are included, in any spacing or
+              punctuation, such as Chef (part-time) or Private Chef.
+            </li>
+            <li>
+              The job&apos;s city or country must be one of their places. A country covers every job in
+              that country. Anywhere covers every city.
+            </li>
+            <li>All of one person&apos;s matches go in a single email.</li>
+            <li>After someone has been emailed, later runs only include jobs posted after that send.</li>
+          </ul>
+          {invalidSince && (
+            <p className="mt-3 text-sm text-red-700">Enter a real date. The preview is showing every job.</p>
+          )}
+          {!since && !invalidSince && (
+            <p className="mt-3 text-sm text-neutral-600">
+              No start date yet, so this preview includes every posted job. Set the date when you decide
+              which day alerts should begin.
+            </p>
+          )}
+        </form>
+
+        <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Count value={preview.recipients.length} label="Would get an email" />
+          <Count value={emailedJobCount} label="Jobs in those emails" />
+          <Count value={preview.unmatchedSubscribers.length} label="Subscribed, no match" />
+          <Count value={preview.optedOutCount} label="Said no to alerts" />
+        </div>
+
+        {preview.recipients.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-neutral-300 bg-white py-16 text-center text-sm text-neutral-500">
+            Nobody would get an email for this preview.
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {preview.recipients.map((person) => (
+              <li key={person.id} className="rounded-xl border border-neutral-200 bg-white p-4 text-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
+                    {person.email}
+                  </a>
+                  <span className="text-neutral-500">
+                    Last emailed <LastSent person={person} />
+                  </span>
+                </div>
+                <p className="mt-1 text-neutral-500">
+                  {person.jobs.length} {person.jobs.length === 1 ? "job" : "jobs"}
+                  {" · "}
+                  <Link href={alertsHref(since, person.id)} className="text-neutral-700 underline underline-offset-2">
+                    Preview email
+                  </Link>
+                </p>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <PreferenceBlock person={person} />
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-neutral-500">Jobs in the email</p>
+                    <div className="mt-1">
+                      <JobList jobs={person.jobs} />
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <details className="mt-8 rounded-xl border border-neutral-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-900">
+            Subscribed, no matching jobs ({preview.unmatchedSubscribers.length})
+          </summary>
+          {preview.unmatchedSubscribers.length === 0 ? (
+            <p className="border-t border-neutral-100 px-4 py-4 text-sm text-neutral-500">
+              Every subscribed person has at least one matching job.
+            </p>
+          ) : (
+            <ul className="divide-y divide-neutral-100 border-t border-neutral-100">
+              {preview.unmatchedSubscribers.map((person) => (
+                <li key={person.id} className="px-4 py-3 text-sm">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
+                      {person.email}
+                    </a>
+                    <span className="text-neutral-500">
+                      Last emailed <LastSent person={person} />
+                    </span>
+                  </div>
+                  <div className="mt-3">
+                    <PreferenceBlock person={person} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+
+        <details className="mt-4 rounded-xl border border-neutral-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-900">
+            Jobs that would not be emailed ({preview.quietJobs.length} of {preview.jobCount})
+          </summary>
+          <p className="border-t border-neutral-100 px-4 py-3 text-sm text-neutral-500">
+            A job is listed here when no subscriber&apos;s role and place match it, or their last
+            email already covers its posted date.
+          </p>
+          {preview.quietJobs.length > 0 && (
+            <ul className="divide-y divide-neutral-100 border-t border-neutral-100">
+              {preview.quietJobs.map((job) => (
+                <li key={job.id} className="px-4 py-3 text-sm">
+                  <Link href={`/jobs/${job.id}`} className="font-medium text-neutral-900 hover:underline">
+                    {job.role}
+                  </Link>
+                  <span className="text-neutral-700"> at {job.venue}</span>
+                  <p className="text-neutral-500">
+                    {formatJobPlace(job) || "No city"} · {formatDate(job.postedAt)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      </main>
+    </div>
+  );
+}

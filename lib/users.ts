@@ -57,12 +57,18 @@ function ensureTables(): Promise<void> {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS locations text[] NOT NULL DEFAULT '{}'`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_alerts boolean NOT NULL DEFAULT false`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded_at timestamptz`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS alerts_last_sent_at timestamptz`;
     })().catch((err) => {
       tablesReady = undefined;
       throw err;
     });
   }
   return tablesReady;
+}
+
+/** Creates the account tables, including alert columns, on first use. */
+export function ensureUserTables(): Promise<void> {
+  return ensureTables();
 }
 
 export function normalizeEmail(email: string): string {
