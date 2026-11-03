@@ -58,6 +58,12 @@ function ensureTables(): Promise<void> {
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_alerts boolean NOT NULL DEFAULT false`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded_at timestamptz`;
       await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS alerts_last_sent_at timestamptz`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS unsubscribe_token text`;
+      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS unsubscribed_at timestamptz`;
+      await sql`
+        CREATE UNIQUE INDEX IF NOT EXISTS users_unsubscribe_token_idx
+        ON users (unsubscribe_token)
+      `;
     })().catch((err) => {
       tablesReady = undefined;
       throw err;
@@ -237,6 +243,7 @@ export type OnboardingAnswer = {
   locations: string[];
   emailAlerts: boolean;
   onboardedAt: Date;
+  unsubscribedAt: Date | null;
 };
 
 /** Removes a job-seeker account. Sessions and password resets go with it. Admin-only. */
@@ -275,9 +282,10 @@ export async function listOnboardingAnswers(): Promise<OnboardingAnswer[]> {
       locations: string[] | null;
       email_alerts: boolean;
       onboarded_at: Date;
+      unsubscribed_at: Date | null;
     }[]
   >`
-    SELECT email, roles, locations, email_alerts, onboarded_at
+    SELECT email, roles, locations, email_alerts, onboarded_at, unsubscribed_at
     FROM users
     WHERE onboarded_at IS NOT NULL
     ORDER BY onboarded_at DESC
@@ -288,7 +296,52 @@ export async function listOnboardingAnswers(): Promise<OnboardingAnswer[]> {
     locations: row.locations ?? [],
     emailAlerts: row.email_alerts,
     onboardedAt: row.onboarded_at,
+    unsubscribedAt: row.unsubscribed_at,
   }));
+}
+
+const UNSUBSCRIBE_TOKEN = /^[a-f0-9]{64}$/;
+
+/** Stable secret for this person's unsubscribe link. Created once, on first preview. */
+export async function ensureUnsubscribeToken(userId: string): Promise<string | null> {
+  await ensureTables();
+  const sql = getSql();
+  const existing = await sql<{ unsubscribe_token: string | null }[]>`
+    SELECT unsubscribe_token FROM users WHERE id = ${userId} LIMIT 1
+  `;
+  if (!existing[0]) return null;
+  if (existing[0].unsubscribe_token) return existing[0].unsubscribe_token;
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const rows = await sql<{ unsubscribe_token: string }[]>`
+    UPDATE users
+    SET unsubscribe_token = ${token}
+    WHERE id = ${userId} AND unsubscribe_token IS NULL
+    RETURNING unsubscribe_token
+  `;
+  if (rows[0]) return rows[0].unsubscribe_token;
+
+  const again = await sql<{ unsubscribe_token: string | null }[]>`
+    SELECT unsubscribe_token FROM users WHERE id = ${userId} LIMIT 1
+  `;
+  return again[0]?.unsubscribe_token ?? null;
+}
+
+/**
+ * One click from the email. Turns alerts off and records when they left.
+ * Returns false when the link does not match an account.
+ */
+export async function unsubscribeByToken(token: string): Promise<boolean> {
+  if (!UNSUBSCRIBE_TOKEN.test(token)) return false;
+  await ensureTables();
+  const rows = await getSql()`
+    UPDATE users
+    SET email_alerts = false,
+        unsubscribed_at = COALESCE(unsubscribed_at, now())
+    WHERE unsubscribe_token = ${token}
+    RETURNING id
+  `;
+  return rows.length > 0;
 }
 
 function cleanChoices(values: string[]) {

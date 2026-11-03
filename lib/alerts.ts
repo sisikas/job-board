@@ -1,4 +1,3 @@
-import { formatDate } from "@/lib/format";
 import { getSql } from "@/lib/db";
 import { ensureUserTables } from "@/lib/users";
 
@@ -11,6 +10,8 @@ import { ensureUserTables } from "@/lib/users";
  *   "part-time" and "private", in any spacing or punctuation, are ignored on
  *   the job title, so "Chef (part-time)" and "Private Chef" match Chef.
  * - one of their places is the job's city, the job's country, or Anywhere
+ * - they asked for alerts and have not unsubscribed. People who said no at
+ *   signup stay out, because email_alerts is false for them.
  * - the job's posted date is after the UTC date of their last alert, if any
  *
  * Callers group the rows so each person appears once, with every matching job.
@@ -193,9 +194,16 @@ export function formatJobPlace(job: Pick<AlertJob, "city" | "country">): string 
   return [job.city, job.country].map((part) => part.trim()).filter(Boolean).join(", ");
 }
 
+function siteOrigin(): string {
+  return (process.env.SITE_URL || "https://thegoodsort.vercel.app").replace(/\/$/, "");
+}
+
 export function jobPublicUrl(id: string): string {
-  const site = (process.env.SITE_URL || "https://thegoodsort.vercel.app").replace(/\/$/, "");
-  return `${site}/jobs/${id}`;
+  return `${siteOrigin()}/jobs/${id}`;
+}
+
+export function alertUnsubscribeUrl(token: string): string {
+  return `${siteOrigin()}/unsubscribe/${token}`;
 }
 
 export function alertSubject(count: number): string {
@@ -232,9 +240,14 @@ function escapeHtml(value: string): string {
 }
 
 /** The message body a recipient would get. Sending is still a separate step. */
-export function renderAlertEmail(person: AlertSubscriber): { subject: string; text: string; html: string } {
+export function renderAlertEmail(
+  person: AlertSubscriber,
+  unsubscribeUrl: string
+): { subject: string; text: string; html: string } {
   const subject = alertSubject(person.jobs.length);
   const because = preferenceSentence(person);
+  const unsubscribeLine =
+    "Not for you anymore? Unsubscribe. One click, no “are you sure?” pages :)";
   const textJobs = person.jobs
     .map((job) => {
       const place = formatJobPlace(job);
@@ -242,14 +255,13 @@ export function renderAlertEmail(person: AlertSubscriber): { subject: string; te
       const lines = [
         `${job.role} at ${job.venue}`,
         place,
-        `Posted ${formatDate(job.postedAt)}`,
         summary,
         jobPublicUrl(job.id),
       ].filter(Boolean);
       return lines.join("\n");
     })
     .join("\n\n");
-  const text = `New jobs for you\n\nThese match the roles and places you asked for.\n\n${textJobs}\n\n${because}`;
+  const text = `New jobs for you\n\nThese match the roles and places you asked for.\n\n${textJobs}\n\n${because}\n\n${unsubscribeLine}\n${unsubscribeUrl}`;
 
   const htmlJobs = person.jobs
     .map((job) => {
@@ -259,10 +271,9 @@ export function renderAlertEmail(person: AlertSubscriber): { subject: string; te
       return `
         <div style="border:1px solid #e6e0d6;border-radius:12px;padding:14px 16px;margin:0 0 12px">
           <p style="margin:0;font-weight:700">${escapeHtml(job.role)}</p>
-          <p style="margin:4px 0 0">${escapeHtml(job.venue)}${place ? ` · ${escapeHtml(place)}` : ""}</p>
-          <p style="margin:4px 0 0;color:#7d7263;font-size:13px">Posted ${escapeHtml(formatDate(job.postedAt))}</p>
+          <p style="margin:4px 0 0;color:#7d7263">${escapeHtml(job.venue)}${place ? ` · ${escapeHtml(place)}` : ""}</p>
           ${summary ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.45">${escapeHtml(summary)}</p>` : ""}
-          <p style="margin:10px 0 0"><a href="${url}" style="color:#517228;font-weight:700">View this job</a></p>
+          <p style="margin:12px 0 0"><a href="${url}" style="display:inline-block;background:#517228;color:#ffffff;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:999px">View this job</a></p>
         </div>`;
     })
     .join("");
@@ -274,6 +285,7 @@ export function renderAlertEmail(person: AlertSubscriber): { subject: string; te
       <p style="margin:0 0 20px;line-height:1.5">These match the roles and places you asked for.</p>
       ${htmlJobs}
       <p style="margin:20px 0 0;font-size:13px;line-height:1.5;color:#7d7263">${escapeHtml(because)}</p>
+      <p style="margin:12px 0 0;font-size:13px;line-height:1.5;color:#7d7263">Not for you anymore? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#517228;font-weight:700">Unsubscribe</a>. One click, no “are you sure?” pages :)</p>
     </div>`;
 
   return { subject, text, html };
@@ -303,6 +315,7 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       FROM jobs j
       JOIN users u
         ON u.email_alerts = true
+       AND u.unsubscribed_at IS NULL
        AND EXISTS (
          SELECT 1 FROM unnest(u.roles) AS role_name
          WHERE btrim(role_name) <> ''
@@ -356,12 +369,14 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       SELECT id, email, roles, locations, alerts_last_sent_at
       FROM users
       WHERE email_alerts = true
+        AND unsubscribed_at IS NULL
       ORDER BY email ASC
     `,
     sql<{ count: number }[]>`
       SELECT count(*)::int AS count
       FROM users
-      WHERE email_alerts = false AND onboarded_at IS NOT NULL
+      WHERE onboarded_at IS NOT NULL
+        AND (email_alerts = false OR unsubscribed_at IS NOT NULL)
     `,
   ]);
 

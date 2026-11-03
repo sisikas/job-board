@@ -124,7 +124,10 @@ export default async function AlertsPage({
             )}
           </div>
           <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-neutral-600">
-            <li>A person is included when they are still subscribed.</li>
+            <li>
+              A person is included only when they asked for alerts and have not unsubscribed.
+              People who said no at signup are left out.
+            </li>
             <li>
               The job&apos;s role must be one of their roles. Chef and Sous Chef stay separate.
               Part-time and private versions of that same role are included, in any spacing or
@@ -152,47 +155,57 @@ export default async function AlertsPage({
           <Count value={preview.recipients.length} label="Would get an email" />
           <Count value={emailedJobCount} label="Jobs in those emails" />
           <Count value={preview.unmatchedSubscribers.length} label="Subscribed, no match" />
-          <Count value={preview.optedOutCount} label="Said no to alerts" />
+          <Count value={preview.optedOutCount} label="Said no or unsubscribed" />
         </div>
 
-        {preview.recipients.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-neutral-300 bg-white py-16 text-center text-sm text-neutral-500">
-            Nobody would get an email for this preview.
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {preview.recipients.map((person) => (
-              <li key={person.id} className="rounded-xl border border-neutral-200 bg-white p-4 text-sm">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
-                    {person.email}
-                  </a>
-                  <span className="text-neutral-500">
-                    Last emailed <LastSent person={person} />
-                  </span>
-                </div>
-                <p className="mt-1 text-neutral-500">
-                  {person.jobs.length} {person.jobs.length === 1 ? "job" : "jobs"}
-                  {" · "}
-                  <Link href={alertsHref(since, person.id)} className="text-neutral-700 underline underline-offset-2">
-                    Preview email
-                  </Link>
-                </p>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                  <PreferenceBlock person={person} />
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-neutral-500">Jobs in the email</p>
-                    <div className="mt-1">
-                      <JobList jobs={person.jobs} />
+        <details className="rounded-xl border border-neutral-200 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-900">
+            Would get an email ({preview.recipients.length})
+          </summary>
+          {preview.recipients.length === 0 ? (
+            <p className="border-t border-neutral-100 px-4 py-4 text-sm text-neutral-500">
+              Nobody would get an email for this preview.
+            </p>
+          ) : (
+            <ul className="space-y-3 border-t border-neutral-100 bg-neutral-50 p-4">
+              {preview.recipients.map((person) => (
+                <li key={person.id} className="rounded-xl border border-neutral-200 bg-white p-4 text-sm">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
+                      {person.email}
+                    </a>
+                    <span className="text-neutral-500">
+                      Last emailed <LastSent person={person} />
+                    </span>
+                  </div>
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-neutral-500">
+                    <span>
+                      {person.jobs.length} {person.jobs.length === 1 ? "job" : "jobs"}
+                    </span>
+                    <Link
+                      href={alertsHref(since, person.id)}
+                      className="inline-flex rounded-full px-3 py-1 text-sm font-bold"
+                      style={{ background: "#e8896a", color: "var(--brand-ink)" }}
+                    >
+                      Preview email
+                    </Link>
+                  </p>
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <PreferenceBlock person={person} />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-neutral-500">Jobs in the email</p>
+                      <div className="mt-1">
+                        <JobList jobs={person.jobs} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
 
-        <details className="mt-8 rounded-xl border border-neutral-200 bg-white">
+        <details className="mt-4 rounded-xl border border-neutral-200 bg-white">
           <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-900">
             Subscribed, no matching jobs ({preview.unmatchedSubscribers.length})
           </summary>

@@ -108,6 +108,12 @@ async function main() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_alerts boolean NOT NULL DEFAULT false`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarded_at timestamptz`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS alerts_last_sent_at timestamptz`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS unsubscribe_token text`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS unsubscribed_at timestamptz`;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_unsubscribe_token_idx
+    ON users (unsubscribe_token)
+  `;
   console.log("✔ Tables `users`, `sessions` and `password_resets` are ready.");
 
   const dataFile = path.join(projectRoot, "data", "jobs.json");

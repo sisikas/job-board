@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/AdminNav";
 import { CopyAlertEmail } from "@/components/CopyAlertEmail";
 import { isAuthed } from "@/lib/auth";
-import { getAlertPreview, parseAlertSince, renderAlertEmail } from "@/lib/alerts";
+import { alertUnsubscribeUrl, getAlertPreview, parseAlertSince, renderAlertEmail } from "@/lib/alerts";
+import { ensureUnsubscribeToken } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Preview alert — Admin" };
@@ -25,7 +26,12 @@ export default async function AlertPreviewPage({
     (subscriber) => subscriber.id === userId
   );
   const back = since ? `/admin/alerts?since=${encodeURIComponent(since)}` : "/admin/alerts";
-  const email = person && person.jobs.length > 0 ? renderAlertEmail(person) : null;
+  const unsubscribeToken =
+    person && person.jobs.length > 0 ? await ensureUnsubscribeToken(person.id) : null;
+  const email =
+    person && person.jobs.length > 0 && unsubscribeToken
+      ? renderAlertEmail(person, alertUnsubscribeUrl(unsubscribeToken))
+      : null;
 
   return (
     <div className="flex-1 bg-neutral-50">
