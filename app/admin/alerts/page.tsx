@@ -4,6 +4,7 @@ import { AdminNav } from "@/components/AdminNav";
 import { isAuthed } from "@/lib/auth";
 import { LocalTime } from "@/components/LocalTime";
 import {
+  alertSubject,
   formatJobPlace,
   getAlertPreview,
   parseAlertSince,
@@ -182,6 +183,9 @@ export default async function AlertsPage({
                       Last emailed <LastSent person={person} />
                     </span>
                   </div>
+                  <p className="mt-2 text-neutral-800">
+                    Subject: {alertSubject(person.jobs.length)}
+                  </p>
                   <p className="mt-2 flex flex-wrap items-center gap-2 text-neutral-500">
                     <span>
                       {person.jobs.length} {person.jobs.length === 1 ? "job" : "jobs"}

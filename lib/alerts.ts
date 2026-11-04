@@ -225,7 +225,7 @@ export function alertUnsubscribeUrl(token: string): string {
 }
 
 export function alertSubject(count: number): string {
-  return count === 1 ? "1 new job on The Good Sort" : `${count} new jobs on The Good Sort`;
+  return count === 1 ? "1 new job for you" : `${count} new jobs for you`;
 }
 
 function joinList(values: string[]): string {
@@ -257,18 +257,41 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+export type AlertDesign = "current" | "warm";
+
+function noteLines(): string[] {
+  return [
+    "Hiya",
+    "found something I think you’ll like.",
+    "I’ll send the next one when it’s worth your time.",
+    "Kate",
+  ];
+}
+
+function signatureHtml(design: AlertDesign): string {
+  const origin = escapeHtml(siteOrigin());
+  const links = `<p style="margin:10px 0 0;color:#4082a1"><a href="${origin}" style="color:#4082a1;text-decoration:none">The Good Sort website</a> <span style="color:#4082a1">·</span> <a href="https://www.instagram.com/the.goodsort/" style="color:#4082a1;text-decoration:none">@the.goodsort</a></p>`;
+  if (design === "warm") {
+    return `<div style="margin:36px 0 0;line-height:1.5"><p style="margin:0;font-weight:700;color:#4082a1">Kate</p><p style="margin:6px 0 0;color:#211c14">Writer, The Good Sort</p><p style="margin:16px 0 0;font-style:italic;color:#517228">Finding Culinary jobs in Incredible Places :)</p></div>`;
+  }
+  const tagline = `<p style="margin:10px 0 0;font-style:italic;color:#517228">Finding Culinary jobs in Incredible Places :)</p>`;
+  const name = `<p style="margin:0;font-weight:700;color:#4082a1">Kate</p><p style="margin:4px 0 0;color:#211c14">Writer, The Good Sort</p>`;
+  return `<div style="margin:28px 0 0;line-height:1.5"><p style="margin:0 0 12px;color:#211c14">--</p>${name}${tagline}${links}</div>`;
+}
+
+function unsubscribeHtml(unsubscribeUrl: string, margin = "20px 0 0"): string {
+  return `<p style="margin:${margin};font-size:13px;line-height:1.5;color:#7d7263">Not for you anymore? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#517228;font-weight:700">Unsubscribe</a>. One click, no “are you sure?” pages :)</p>`;
+}
+
 /** The message body a recipient would get. Sending is still a separate step. */
 export function renderAlertEmail(
   person: AlertSubscriber,
-  unsubscribeUrl: string
+  unsubscribeUrl: string,
+  design: AlertDesign = "current"
 ): { subject: string; text: string; html: string } {
   const subject = alertSubject(person.jobs.length);
-  const note = [
-    "Hiya",
-    "found something I think you’ll like - and it fits what you told me you’re after.",
-    "I’ll send the next one when it’s worth your time.",
-    "Kate",
-  ].join("\n");
+  const note = noteLines().join("\n");
+  const noteHtml = escapeHtml(note).replaceAll("\n", "<br>");
   const unsubscribeLine =
     "Not for you anymore? Unsubscribe. One click, no “are you sure?” pages :)";
   const textJobs = person.jobs
@@ -284,32 +307,71 @@ export function renderAlertEmail(
       return lines.join("\n");
     })
     .join("\n\n");
-  const text = `New Jobs for you\n\n${note}\n\n${textJobs}\n\n${unsubscribeLine}\n${unsubscribeUrl}`;
+  const signatureText = [
+    ...(design === "current" ? ["--"] : []),
+    "Kate",
+    "Writer, The Good Sort",
+    "Finding Culinary jobs in Incredible Places :)",
+    ...(design === "current"
+      ? [
+          `The Good Sort website ${siteOrigin()}`,
+          "@the.goodsort https://www.instagram.com/the.goodsort/",
+        ]
+      : []),
+  ].join("\n");
+  const text = `New Jobs for you\n\n${note}\n\n${textJobs}\n\n${signatureText}\n\n${unsubscribeLine}\n${unsubscribeUrl}`;
 
-  const htmlJobs = person.jobs
-    .map((job) => {
-      const place = formatJobPlace(job);
-      const summary = excerpt(job.description);
-      const url = escapeHtml(jobPublicUrl(job.id));
-      return `
-        <div style="border:1px solid #e6e0d6;border-radius:12px;padding:14px 16px;margin:0 0 12px">
-          <p style="margin:0;font-weight:700">${escapeHtml(job.role)}</p>
-          <p style="margin:4px 0 0;color:#7d7263">${escapeHtml(job.venue)}${place ? ` · ${escapeHtml(place)}` : ""}</p>
-          ${summary ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.45">${escapeHtml(summary)}</p>` : ""}
-          <p style="margin:12px 0 0"><a href="${url}" style="display:inline-block;background:#517228;color:#ffffff;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:999px">View this job</a></p>
-        </div>`;
-    })
-    .join("");
+  const jobBlocks = person.jobs.map((job) => {
+    const place = formatJobPlace(job);
+    const summary = excerpt(job.description);
+    const url = escapeHtml(jobPublicUrl(job.id));
+    const venue = `${escapeHtml(job.venue)}${place ? ` · ${escapeHtml(place)}` : ""}`;
+    return { role: escapeHtml(job.role), venue, summary: summary ? escapeHtml(summary) : "", url };
+  });
 
-  const html = `
+  const html =
+    design === "warm"
+      ? `
+    <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;background:#f7e9bd;padding:14px;border-radius:16px">
+      <div style="background:#fdfaf6;color:#211c14;border-radius:12px;padding:24px 22px 22px;line-height:1.5">
+        <p style="margin:0 0 10px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#517228;font-weight:700">The Good Sort</p>
+        <h1 style="font-size:24px;line-height:1.2;font-weight:700;margin:0 0 18px">New Jobs for you</h1>
+        <p style="margin:0;font-style:italic;color:#517228">${noteHtml}</p>
+        ${jobBlocks
+          .map(
+            (job) => `
+        <div style="background:#ffffff;border:2px solid #c9b48a;border-radius:12px;padding:20px 18px 18px;margin-top:36px">
+          <p style="margin:0;font-weight:700">${job.role}</p>
+          <p style="margin:8px 0 0;color:#7d7263">${job.venue}</p>
+          ${job.summary ? `<p style="margin:16px 0 0;font-size:16px;line-height:1.5">${job.summary}</p>` : ""}
+          <p style="margin:20px 0 0"><a href="${job.url}" style="display:inline-block;background:#517228;color:#ffffff;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:999px">View this job</a></p>
+        </div>`
+          )
+          .join("")}
+        ${signatureHtml("warm")}
+        ${unsubscribeHtml(unsubscribeUrl, "32px 0 0")}
+      </div>
+    </div>`
+      : `
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#211c14">
       <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#517228;font-weight:700">The Good Sort</p>
       <h1 style="font-size:24px;line-height:1.2;margin:0 0 8px">New Jobs for you</h1>
       <div style="margin:0 0 20px;font-style:italic;line-height:1.5;color:#517228">
-        <p style="margin:0">${escapeHtml(note).replaceAll("\n", "<br>")}</p>
+        <p style="margin:0">${noteHtml}</p>
       </div>
-      ${htmlJobs}
-      <p style="margin:12px 0 0;font-size:13px;line-height:1.5;color:#7d7263">Not for you anymore? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#517228;font-weight:700">Unsubscribe</a>. One click, no “are you sure?” pages :)</p>
+      ${jobBlocks
+        .map(
+          (job) => `
+        <div style="border:1px solid #e6e0d6;border-radius:12px;padding:14px 16px;margin:0 0 12px">
+          <p style="margin:0;font-weight:700">${job.role}</p>
+          <p style="margin:4px 0 0;color:#7d7263">${job.venue}</p>
+          ${job.summary ? `<p style="margin:8px 0 0;font-size:14px;line-height:1.45">${job.summary}</p>` : ""}
+          <p style="margin:12px 0 0"><a href="${job.url}" style="display:inline-block;background:#517228;color:#ffffff;font-weight:700;text-decoration:none;padding:10px 18px;border-radius:999px">View this job</a></p>
+        </div>`
+        )
+        .join("")}
+      ${signatureHtml("current")}
+      ${unsubscribeHtml(unsubscribeUrl)}
     </div>`;
 
   return { subject, text, html };

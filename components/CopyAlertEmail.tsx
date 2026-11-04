@@ -6,9 +6,10 @@ type Props = {
   subject: string;
   html: string;
   text: string;
+  showSubject?: boolean;
 };
 
-export function CopyAlertEmail({ subject, html, text }: Props) {
+export function CopyAlertEmail({ subject, html, text, showSubject = true }: Props) {
   const [notice, setNotice] = useState("");
 
   async function copySubject() {
@@ -32,13 +33,15 @@ export function CopyAlertEmail({ subject, html, text }: Props) {
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={copySubject}
-        className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100"
-      >
-        Copy subject
-      </button>
+      {showSubject && (
+        <button
+          type="button"
+          onClick={copySubject}
+          className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100"
+        >
+          Copy subject
+        </button>
+      )}
       <button
         type="button"
         onClick={copyForGmail}

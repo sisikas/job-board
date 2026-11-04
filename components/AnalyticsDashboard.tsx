@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import type { AnalyticsReport, CountStat, NameCount } from "@/lib/ga-report";
+import type { AnalyticsReport, CountStat, NameCount, ReturnVisit } from "@/lib/ga-report";
 
 type Load =
   | { status: "loading" }
@@ -316,6 +316,7 @@ function VisitorsView({ report }: { report: AnalyticsReport }) {
         />
         <Stat label="Average time on the site" value={formatTime(visitors.averageSeconds)} />
       </section>
+      <ReturnChart rows={visitors.returns} error={visitors.returnsError} />
       <PlaceCharts
         sources={visitors.sources}
         countries={visitors.countries}
@@ -379,6 +380,68 @@ function CountCard({
       value={stat.error ? "—" : String(stat.users)}
       detail={stat.error ? stat.error : `${stat.percent}% of ${whole} ${wholeLabel}`}
     />
+  );
+}
+
+function visitsEachLabel(value: number) {
+  if (!value) return "no visits in these dates";
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === 1) return "1 visit each";
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text} visits each`;
+}
+
+function ReturnChart({ rows, error }: { rows?: ReturnVisit[]; error?: string }) {
+  const list = rows ?? [];
+  const peak = list.reduce((highest, row) => Math.max(highest, row.people), 0);
+  return (
+    <Panel title="Who came back">
+      <p className="mb-4 text-sm" style={{ color: PINK_MUTED }}>
+        First visit means they had never been here. Came back means they had. Visits each is how
+        often they opened the site in these dates.
+      </p>
+      {error ? (
+        <p className="text-sm" style={{ color: "#9b2c4a" }}>
+          {error}
+        </p>
+      ) : peak === 0 ? (
+        <p className="text-sm" style={{ color: PINK_MUTED }}>
+          No visits in these dates yet.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-4">
+          {list.map((row) => {
+            const width = Math.round((row.people / peak) * 100);
+            const people = `${row.people} ${row.people === 1 ? "person" : "people"}`;
+            const detail = `${people}, ${visitsEachLabel(row.visitsEach)}`;
+            return (
+              <li key={row.label}>
+                <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm">
+                  <span className="font-medium" style={{ color: PINK_DEEP }}>
+                    {row.label}
+                  </span>
+                  <span style={{ color: PINK_MUTED }}>{detail}</span>
+                </div>
+                <div
+                  className="h-3 rounded-full"
+                  style={{ background: "#fde8ef" }}
+                  role="img"
+                  aria-label={`${row.label}, ${detail}`}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${width}%`,
+                      background: row.label === "Came back" ? PINK : "#f0a36a",
+                    }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Panel>
   );
 }
 

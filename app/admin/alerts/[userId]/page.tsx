@@ -30,7 +30,10 @@ export default async function AlertPreviewPage({
     person && person.jobs.length > 0 ? await ensureUnsubscribeToken(person.id) : null;
   const email =
     person && person.jobs.length > 0 && unsubscribeToken
-      ? renderAlertEmail(person, alertUnsubscribeUrl(unsubscribeToken))
+      ? {
+          current: renderAlertEmail(person, alertUnsubscribeUrl(unsubscribeToken), "current"),
+          warm: renderAlertEmail(person, alertUnsubscribeUrl(unsubscribeToken), "warm"),
+        }
       : null;
 
   return (
@@ -48,7 +51,7 @@ export default async function AlertPreviewPage({
           </h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             {person
-              ? "Copy the subject and the message, then paste them into a new Gmail email. Nothing is sent from this page."
+              ? "Choose a design, then copy the subject and that message. Nothing is sent from this page."
               : "Nothing is sent from this page."}
           </p>
         </div>
@@ -57,20 +60,37 @@ export default async function AlertPreviewPage({
       <main className="max-w-3xl mx-auto px-4 py-6">
         {email ? (
           <div>
-            <p className="mb-3 text-sm text-neutral-700">
-              <span className="font-medium text-neutral-900">Subject:</span> {email.subject}
-            </p>
-            <CopyAlertEmail subject={email.subject} html={email.html} text={email.text} />
-            <div
-              className="rounded-xl border border-neutral-200 bg-white px-6 py-8"
-              dangerouslySetInnerHTML={{ __html: email.html }}
-            />
+            <div className="mb-6 rounded-xl border border-neutral-200 bg-white px-6 py-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">Subject</p>
+              <p className="mt-1 text-base font-semibold text-neutral-900">{email.current.subject}</p>
+            </div>
+            {(
+              [
+                ["Current", email.current],
+                ["Warm paper", email.warm],
+              ] as const
+            ).map(([label, version], index) => (
+              <section key={label} className={index === 0 ? "" : "mt-8"}>
+                <h2 className="text-base font-semibold text-neutral-900">{label}</h2>
+                <div className="mt-3">
+                  <CopyAlertEmail
+                    subject={version.subject}
+                    html={version.html}
+                    text={version.text}
+                    showSubject={index === 0}
+                  />
+                </div>
+                <div className="rounded-xl border border-neutral-200 bg-white px-6 py-8">
+                  <div dangerouslySetInnerHTML={{ __html: version.html }} />
+                </div>
+              </section>
+            ))}
             <details className="mt-4 rounded-xl border border-neutral-200 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-900">
                 Plain-text version
               </summary>
               <pre className="overflow-x-auto border-t border-neutral-100 px-4 py-4 text-sm whitespace-pre-wrap text-neutral-800">
-                {email.text}
+                {email.current.text}
               </pre>
             </details>
           </div>

@@ -2,6 +2,12 @@ import crypto from "crypto";
 
 export type NameCount = { label: string; users: number };
 
+export type ReturnVisit = {
+  label: string;
+  people: number;
+  visitsEach: number;
+};
+
 export type CountStat = {
   users: number;
   percent: number;
@@ -19,6 +25,8 @@ export type AnalyticsReport = {
     wallSignedUp: CountStat;
     sources: NameCount[];
     countries: NameCount[];
+    returns: ReturnVisit[];
+    returnsError?: string;
   };
   users: {
     count: number;
@@ -342,6 +350,23 @@ function breakdownCounts(table: FunnelTable | undefined, dimension: string): Nam
   return counts;
 }
 
+const RETURN_LABELS: Record<string, string> = {
+  new: "First visit",
+  returning: "Came back",
+};
+
+export function returnVisits(report: GaReport | undefined): ReturnVisit[] {
+  return ["new", "returning"].map((kind) => {
+    const row = report?.rows?.find(
+      (item) => dimensionValue(report, item, "newVsReturning") === kind
+    );
+    const people = metricValue(report, row, "activeUsers");
+    const sessions = metricValue(report, row, "sessions");
+    const visitsEach = people ? Math.round((sessions / people) * 10) / 10 : 0;
+    return { label: RETURN_LABELS[kind], people, visitsEach };
+  });
+}
+
 function nameCounts(report: GaReport | undefined, dimension: string): NameCount[] {
   return (report?.rows ?? []).map((row) => ({
     label: placeLabel(dimensionValue(report, row, dimension)),
@@ -470,7 +495,19 @@ export async function getAnalyticsReport(
     .then((table) => breakdownCounts(table, "country"))
     .catch((error: unknown) => asError(error, "Where users came from could not be loaded."));
 
+  const returnsReport = runReports(creds.propertyId, token, [
+    {
+      dateRanges,
+      dimensions: [{ name: "newVsReturning" }],
+      metrics: [{ name: "activeUsers" }, { name: "sessions" }],
+      ...(visitorFilter ? { dimensionFilter: visitorFilter } : {}),
+    },
+  ])
+    .then((reports) => returnVisits(reports[0]))
+    .catch((error: unknown) => asError(error, "Return visits could not be loaded."));
+
   const [overview, events, sources, countries] = await main;
+  const returns = await returnsReport;
   const overviewRow = overview?.rows?.[0];
   const visitors = metricValue(overview, overviewRow, "activeUsers");
   const bounce = metricValue(overview, overviewRow, "bounceRate");
@@ -509,6 +546,8 @@ export async function getAnalyticsReport(
       },
       sources: nameCounts(sources, "sessionSourceMedium"),
       countries: nameCounts(countries, "country"),
+      returns: returns instanceof Error ? [] : returns,
+      returnsError: returns instanceof Error ? returns.message : undefined,
     },
     users: {
       count: userCount,
