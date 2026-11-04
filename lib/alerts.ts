@@ -220,6 +220,17 @@ export function jobPublicUrl(id: string): string {
   return `${siteOrigin()}/jobs/${id}`;
 }
 
+/** Job link for an alert email. The role is utm_content, so a click can be told apart in Analytics. */
+export function alertJobUrl(job: Pick<AlertJob, "id" | "role">): string {
+  const url = new URL(jobPublicUrl(job.id));
+  url.searchParams.set("utm_source", "email");
+  url.searchParams.set("utm_medium", "email");
+  url.searchParams.set("utm_campaign", "job-alert");
+  const role = job.role.trim();
+  if (role) url.searchParams.set("utm_content", role);
+  return url.toString();
+}
+
 export function alertUnsubscribeUrl(token: string): string {
   return `${siteOrigin()}/unsubscribe/${token}`;
 }
@@ -302,7 +313,7 @@ export function renderAlertEmail(
         `${job.role} at ${job.venue}`,
         place,
         summary,
-        jobPublicUrl(job.id),
+        alertJobUrl(job),
       ].filter(Boolean);
       return lines.join("\n");
     })
@@ -324,7 +335,7 @@ export function renderAlertEmail(
   const jobBlocks = person.jobs.map((job) => {
     const place = formatJobPlace(job);
     const summary = excerpt(job.description);
-    const url = escapeHtml(jobPublicUrl(job.id));
+    const url = escapeHtml(alertJobUrl(job));
     const venue = `${escapeHtml(job.venue)}${place ? ` · ${escapeHtml(place)}` : ""}`;
     return { role: escapeHtml(job.role), venue, summary: summary ? escapeHtml(summary) : "", url };
   });

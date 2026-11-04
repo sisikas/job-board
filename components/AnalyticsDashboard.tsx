@@ -317,6 +317,7 @@ function VisitorsView({ report }: { report: AnalyticsReport }) {
         <Stat label="Average time on the site" value={formatTime(visitors.averageSeconds)} />
       </section>
       <ReturnChart rows={visitors.returns} error={visitors.returnsError} />
+      <AlertClicks rows={visitors.alertClicks} error={visitors.alertClicksError} />
       <PlaceCharts
         sources={visitors.sources}
         countries={visitors.countries}
@@ -434,6 +435,55 @@ function ReturnChart({ rows, error }: { rows?: ReturnVisit[]; error?: string }) 
                       width: `${width}%`,
                       background: row.label === "Came back" ? PINK : "#f0a36a",
                     }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+function AlertClicks({ rows, error }: { rows?: NameCount[]; error?: string }) {
+  const list = (rows ?? []).filter((row) => row.users > 0 && row.label !== "Unknown");
+  const peak = list.reduce((highest, row) => Math.max(highest, row.users), 0);
+  return (
+    <Panel title="Opened from an alert">
+      <p className="mb-4 text-sm" style={{ color: PINK_MUTED }}>
+        People who clicked a job in an alert email. Each bar is the role on that link.
+      </p>
+      {error ? (
+        <p className="text-sm" style={{ color: "#9b2c4a" }}>
+          {error}
+        </p>
+      ) : peak === 0 ? (
+        <p className="text-sm" style={{ color: PINK_MUTED }}>
+          No one has opened a job from an alert in these dates.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-4">
+          {list.map((row) => {
+            const width = Math.round((row.users / peak) * 100);
+            const people = `${row.users} ${row.users === 1 ? "person" : "people"}`;
+            return (
+              <li key={row.label}>
+                <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm">
+                  <span className="font-medium" style={{ color: PINK_DEEP }}>
+                    {row.label}
+                  </span>
+                  <span style={{ color: PINK_MUTED }}>{people}</span>
+                </div>
+                <div
+                  className="h-3 rounded-full"
+                  style={{ background: "#fde8ef" }}
+                  role="img"
+                  aria-label={`${row.label}, ${people}`}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${width}%`, background: PINK }}
                   />
                 </div>
               </li>

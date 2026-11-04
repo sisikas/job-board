@@ -27,6 +27,8 @@ export type AnalyticsReport = {
     countries: NameCount[];
     returns: ReturnVisit[];
     returnsError?: string;
+    alertClicks: NameCount[];
+    alertClicksError?: string;
   };
   users: {
     count: number;
@@ -227,6 +229,15 @@ function duringHours(hours: string[]) {
     filter: {
       fieldName: "dateHour",
       inListFilter: { values: hours },
+    },
+  };
+}
+
+function fromAlertEmail() {
+  return {
+    filter: {
+      fieldName: "sessionManualCampaignName",
+      stringFilter: { matchType: "EXACT", value: "job-alert", caseSensitive: false },
     },
   };
 }
@@ -505,9 +516,22 @@ export async function getAnalyticsReport(
   ])
     .then((reports) => returnVisits(reports[0]))
     .catch((error: unknown) => asError(error, "Return visits could not be loaded."));
+  const alertClicksReport = runReports(creds.propertyId, token, [
+    {
+      dateRanges,
+      dimensions: [{ name: "sessionManualAdContent" }],
+      metrics: [{ name: "activeUsers" }],
+      dimensionFilter: combineFilters(fromAlertEmail(), countryFilter, hourFilter),
+      orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
+      limit: "8",
+    },
+  ])
+    .then((reports) => nameCounts(reports[0], "sessionManualAdContent"))
+    .catch((error: unknown) => asError(error, "Alert clicks could not be loaded."));
 
   const [overview, events, sources, countries] = await main;
   const returns = await returnsReport;
+  const alertClicks = await alertClicksReport;
   const overviewRow = overview?.rows?.[0];
   const visitors = metricValue(overview, overviewRow, "activeUsers");
   const bounce = metricValue(overview, overviewRow, "bounceRate");
@@ -548,6 +572,8 @@ export async function getAnalyticsReport(
       countries: nameCounts(countries, "country"),
       returns: returns instanceof Error ? [] : returns,
       returnsError: returns instanceof Error ? returns.message : undefined,
+      alertClicks: alertClicks instanceof Error ? [] : alertClicks,
+      alertClicksError: alertClicks instanceof Error ? alertClicks.message : undefined,
     },
     users: {
       count: userCount,
