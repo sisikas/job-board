@@ -263,7 +263,12 @@ export function renderAlertEmail(
   unsubscribeUrl: string
 ): { subject: string; text: string; html: string } {
   const subject = alertSubject(person.jobs.length);
-  const because = preferenceSentence(person);
+  const note = [
+    "Hiya",
+    "found something I think you’ll like - and it fits what you told me you’re after.",
+    "I’ll send the next one when it’s worth your time.",
+    "Kate",
+  ].join("\n");
   const unsubscribeLine =
     "Not for you anymore? Unsubscribe. One click, no “are you sure?” pages :)";
   const textJobs = person.jobs
@@ -279,7 +284,7 @@ export function renderAlertEmail(
       return lines.join("\n");
     })
     .join("\n\n");
-  const text = `New jobs for you\n\nThese match the roles and places you asked for.\n\n${textJobs}\n\n${because}\n\n${unsubscribeLine}\n${unsubscribeUrl}`;
+  const text = `New Jobs for you\n\n${note}\n\n${textJobs}\n\n${unsubscribeLine}\n${unsubscribeUrl}`;
 
   const htmlJobs = person.jobs
     .map((job) => {
@@ -299,10 +304,11 @@ export function renderAlertEmail(
   const html = `
     <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#211c14">
       <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#517228;font-weight:700">The Good Sort</p>
-      <h1 style="font-size:24px;line-height:1.2;margin:0 0 8px">New jobs for you</h1>
-      <p style="margin:0 0 20px;line-height:1.5">These match the roles and places you asked for.</p>
+      <h1 style="font-size:24px;line-height:1.2;margin:0 0 8px">New Jobs for you</h1>
+      <div style="margin:0 0 20px;font-style:italic;line-height:1.5;color:#517228">
+        <p style="margin:0">${escapeHtml(note).replaceAll("\n", "<br>")}</p>
+      </div>
       ${htmlJobs}
-      <p style="margin:20px 0 0;font-size:13px;line-height:1.5;color:#7d7263">${escapeHtml(because)}</p>
       <p style="margin:12px 0 0;font-size:13px;line-height:1.5;color:#7d7263">Not for you anymore? <a href="${escapeHtml(unsubscribeUrl)}" style="color:#517228;font-weight:700">Unsubscribe</a>. One click, no “are you sure?” pages :)</p>
     </div>`;
 
