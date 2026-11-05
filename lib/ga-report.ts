@@ -14,9 +14,18 @@ export type CountStat = {
   error?: string;
 };
 
+export type TrendPoint = {
+  label: string;
+  title: string;
+  count: number;
+};
+
+export type TrendUnit = "day" | "hour";
+
 export type AnalyticsReport = {
   start: string;
   end: string;
+  trendUnit: TrendUnit;
   visitors: {
     count: number;
     bouncePercent: number;
@@ -29,6 +38,8 @@ export type AnalyticsReport = {
     returnsError?: string;
     alertClicks: NameCount[];
     alertClicksError?: string;
+    trend: TrendPoint[];
+    trendError?: string;
   };
   users: {
     count: number;
@@ -37,6 +48,8 @@ export type AnalyticsReport = {
     sources: NameCount[];
     countries: NameCount[];
     error?: string;
+    trend: TrendPoint[];
+    trendError?: string;
   };
 };
 
@@ -378,6 +391,53 @@ export function returnVisits(report: GaReport | undefined): ReturnVisit[] {
   });
 }
 
+function eachDate(start: string, end: string): string[] {
+  const dates: string[] = [];
+  const cursor = new Date(`${start}T00:00:00Z`);
+  const last = new Date(`${end}T00:00:00Z`);
+  if (Number.isNaN(cursor.getTime()) || Number.isNaN(last.getTime()) || cursor > last) return dates;
+  while (cursor <= last && dates.length < 400) {
+    dates.push(cursor.toISOString().slice(0, 10).replaceAll("-", ""));
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+function dayTitle(yyyymmdd: string, withYear: boolean): string {
+  const year = Number(yyyymmdd.slice(0, 4));
+  const month = Number(yyyymmdd.slice(4, 6));
+  const day = Number(yyyymmdd.slice(6, 8));
+  if (!year || !month || !day) return yyyymmdd;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(withYear ? { year: "numeric" } : {}),
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+export function buildTrend(
+  report: GaReport | undefined,
+  dimension: "date" | "dateHour",
+  buckets: string[],
+  withYear: boolean
+): TrendPoint[] {
+  const counts = new Map<string, number>();
+  for (const row of report?.rows ?? []) {
+    counts.set(dimensionValue(report, row, dimension), metricValue(report, row, "activeUsers"));
+  }
+  return buckets.map((bucket) => {
+    const count = counts.get(bucket) ?? 0;
+    if (dimension === "dateHour") {
+      const day = dayTitle(bucket.slice(0, 8), withYear);
+      const hour = `${bucket.slice(8, 10)}:00`;
+      return { label: hour, title: `${day}, ${hour}`, count };
+    }
+    const title = dayTitle(bucket, withYear);
+    return { label: title, title, count };
+  });
+}
+
 function nameCounts(report: GaReport | undefined, dimension: string): NameCount[] {
   return (report?.rows ?? []).map((row) => ({
     label: placeLabel(dimensionValue(report, row, dimension)),
@@ -409,10 +469,12 @@ export async function getAnalyticsReport(
 
   const token = await accessToken(creds.email, creds.key);
   let hourFilter: Record<string, unknown> | undefined;
+  let hours: string[] | null = null;
   if (options?.last24Hours) {
     const window = rollingDay(await propertyTimeZone(creds.propertyId, token));
     start = window.start;
     end = window.end;
+    hours = window.hours;
     hourFilter = duringHours(window.hours);
   }
   const dateRanges = [{ startDate: start, endDate: end }];
@@ -529,9 +591,35 @@ export async function getAnalyticsReport(
     .then((reports) => nameCounts(reports[0], "sessionManualAdContent"))
     .catch((error: unknown) => asError(error, "Alert clicks could not be loaded."));
 
+  const trendDimension = hours ? "dateHour" : "date";
+  const trendBuckets = hours ?? eachDate(start, end);
+  const trendWithYear = start.slice(0, 4) !== end.slice(0, 4);
+  const trendReport = runReports(creds.propertyId, token, [
+    {
+      dateRanges,
+      dimensions: [{ name: trendDimension }],
+      metrics: [{ name: "activeUsers" }],
+      ...(visitorFilter ? { dimensionFilter: visitorFilter } : {}),
+      limit: "400",
+    },
+    {
+      dateRanges,
+      dimensions: [{ name: trendDimension }],
+      metrics: [{ name: "activeUsers" }],
+      dimensionFilter: combineFilters(eventFilter, hourFilter),
+      limit: "400",
+    },
+  ])
+    .then(([visitorTrend, userTrend]) => ({
+      visitors: buildTrend(visitorTrend, trendDimension, trendBuckets, trendWithYear),
+      users: buildTrend(userTrend, trendDimension, trendBuckets, trendWithYear),
+    }))
+    .catch((error: unknown) => asError(error, "The line could not be loaded."));
+
   const [overview, events, sources, countries] = await main;
   const returns = await returnsReport;
   const alertClicks = await alertClicksReport;
+  const trend = await trendReport;
   const overviewRow = overview?.rows?.[0];
   const visitors = metricValue(overview, overviewRow, "activeUsers");
   const bounce = metricValue(overview, overviewRow, "bounceRate");
@@ -551,9 +639,11 @@ export async function getAnalyticsReport(
     searchedAfter instanceof Error
       ? 0
       : Math.min(userCount, searchedAfter.searched);
+  const trendFailed = trend instanceof Error;
   return {
     start,
     end,
+    trendUnit: hours ? "hour" : "day",
     visitors: {
       count: visitors,
       bouncePercent: Math.round((bounce <= 1 ? bounce * 100 : bounce) * 10) / 10,
@@ -574,6 +664,8 @@ export async function getAnalyticsReport(
       returnsError: returns instanceof Error ? returns.message : undefined,
       alertClicks: alertClicks instanceof Error ? [] : alertClicks,
       alertClicksError: alertClicks instanceof Error ? alertClicks.message : undefined,
+      trend: trendFailed ? [] : trend.visitors,
+      trendError: trendFailed ? trend.message : undefined,
     },
     users: {
       count: userCount,
@@ -593,6 +685,8 @@ export async function getAnalyticsReport(
           : userCountries instanceof Error
             ? userCountries.message
             : undefined,
+      trend: trendFailed ? [] : trend.users,
+      trendError: trendFailed ? trend.message : undefined,
     },
   };
 }

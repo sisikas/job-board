@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import type { AnalyticsReport, CountStat, NameCount, ReturnVisit } from "@/lib/ga-report";
+import type {
+  AnalyticsReport,
+  CountStat,
+  NameCount,
+  ReturnVisit,
+  TrendPoint,
+  TrendUnit,
+} from "@/lib/ga-report";
 
 type Load =
   | { status: "loading" }
@@ -316,6 +323,12 @@ function VisitorsView({ report }: { report: AnalyticsReport }) {
         />
         <Stat label="Average time on the site" value={formatTime(visitors.averageSeconds)} />
       </section>
+      <TrendChart
+        points={visitors.trend}
+        unit={report.trendUnit}
+        noun="visitor"
+        error={visitors.trendError}
+      />
       <ReturnChart rows={visitors.returns} error={visitors.returnsError} />
       <AlertClicks rows={visitors.alertClicks} error={visitors.alertClicksError} />
       <PlaceCharts
@@ -345,6 +358,12 @@ function UsersView({ report }: { report: AnalyticsReport }) {
         />
         <Stat label="Average time on the site" value={formatTime(users.averageSeconds)} />
       </section>
+      <TrendChart
+        points={users.trend}
+        unit={report.trendUnit}
+        noun="user"
+        error={users.trendError}
+      />
       {users.error ? (
         <p
           className="rounded-2xl px-4 py-3 text-sm"
@@ -381,6 +400,184 @@ function CountCard({
       value={stat.error ? "—" : String(stat.users)}
       detail={stat.error ? stat.error : `${stat.percent}% of ${whole} ${wholeLabel}`}
     />
+  );
+}
+
+function trendCopy(unit: TrendUnit, noun: "visitor" | "user") {
+  const people = noun === "visitor" ? "came" : "signed up";
+  const when = unit === "hour" ? "hour" : "day";
+  const title = noun === "visitor" ? `Visitors each ${when}` : "New Sign ups";
+  return { title, caption: `Each point is how many people ${people} that ${when}.` };
+}
+
+function axisIndexes(count: number): number[] {
+  if (count <= 1) return [0];
+  const target = count <= 8 ? count : 6;
+  const indexes = new Set<number>();
+  for (let step = 0; step < target; step += 1) {
+    indexes.add(Math.round((step * (count - 1)) / (target - 1)));
+  }
+  return [...indexes];
+}
+
+function TrendChart({
+  points,
+  unit,
+  noun,
+  error,
+}: {
+  points?: TrendPoint[];
+  unit: TrendUnit;
+  noun: "visitor" | "user";
+  error?: string;
+}) {
+  const [hover, setHover] = useState<number | null>(null);
+  const list = points ?? [];
+  const copy = trendCopy(unit, noun);
+  const width = 640;
+  const height = 220;
+  const padLeft = 44;
+  const padRight = 16;
+  const padTop = 18;
+  const padBottom = 32;
+  const plotWidth = width - padLeft - padRight;
+  const plotHeight = height - padTop - padBottom;
+  const peak = list.reduce((highest, point) => Math.max(highest, point.count), 0);
+  const scale = Math.max(peak, 1);
+  const ticks = [...new Set(peak <= 1 ? [0, scale] : [0, Math.round(peak / 2), peak])];
+  const xAt = (index: number) =>
+    list.length <= 1 ? padLeft + plotWidth / 2 : padLeft + (index / (list.length - 1)) * plotWidth;
+  const yAt = (count: number) => padTop + plotHeight - (count / scale) * plotHeight;
+  const line = list
+    .map((point, index) => `${index === 0 ? "M" : "L"}${xAt(index).toFixed(1)},${yAt(point.count).toFixed(1)}`)
+    .join(" ");
+  const area =
+    list.length > 1
+      ? `${line} L${xAt(list.length - 1).toFixed(1)},${(padTop + plotHeight).toFixed(1)} L${xAt(0).toFixed(1)},${(padTop + plotHeight).toFixed(1)} Z`
+      : "";
+  const labels = new Set(axisIndexes(list.length));
+  const active = hover !== null ? list[hover] : undefined;
+  const people =
+    active === undefined
+      ? ""
+      : `${active.count} ${active.count === 1 ? noun : `${noun}s`}`;
+
+  return (
+    <Panel title={copy.title}>
+      <p className="mb-4 text-sm" style={{ color: PINK_MUTED }}>
+        {copy.caption}
+      </p>
+      {error ? (
+        <p className="text-sm" style={{ color: "#9b2c4a" }}>
+          {error}
+        </p>
+      ) : list.length === 0 ? (
+        <p className="text-sm" style={{ color: PINK_MUTED }}>
+          No dates in this range.
+        </p>
+      ) : (
+        <div className="relative">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="w-full"
+            role="img"
+            aria-label={`${copy.title}. The highest point is ${peak}.`}
+            onPointerLeave={() => setHover(null)}
+          >
+            {ticks.map((tick) => (
+              <g key={tick}>
+                <line
+                  x1={padLeft}
+                  x2={width - padRight}
+                  y1={yAt(tick)}
+                  y2={yAt(tick)}
+                  stroke="#f3c6d4"
+                  strokeWidth="1"
+                />
+                <text
+                  x={padLeft - 8}
+                  y={yAt(tick) + 4}
+                  textAnchor="end"
+                  fill="#a06a80"
+                  fontSize="11"
+                >
+                  {tick}
+                </text>
+              </g>
+            ))}
+            {area && <path d={area} fill="#e56b96" opacity="0.16" />}
+            {list.length > 1 && (
+              <path d={line} fill="none" stroke="#e56b96" strokeWidth="2.5" strokeLinejoin="round" />
+            )}
+            {list.length <= 31 &&
+              list.map((point, index) => (
+                <circle
+                  key={`${point.title}-dot`}
+                  cx={xAt(index)}
+                  cy={yAt(point.count)}
+                  r={hover === index ? 5 : 3.5}
+                  fill={hover === index ? "#7a2e4a" : "#e56b96"}
+                />
+              ))}
+            {hover !== null && (
+              <line
+                x1={xAt(hover)}
+                x2={xAt(hover)}
+                y1={padTop}
+                y2={padTop + plotHeight}
+                stroke="#7a2e4a"
+                strokeDasharray="3 3"
+              />
+            )}
+            {list.map((point, index) => {
+              const left = index === 0 ? padLeft : (xAt(index - 1) + xAt(index)) / 2;
+              const right = index === list.length - 1 ? width - padRight : (xAt(index) + xAt(index + 1)) / 2;
+              return (
+                <rect
+                  key={`${point.title}-hit`}
+                  x={left}
+                  y={padTop}
+                  width={Math.max(right - left, 1)}
+                  height={plotHeight}
+                  fill="transparent"
+                  onPointerEnter={() => setHover(index)}
+                />
+              );
+            })}
+            {list.map((point, index) =>
+              labels.has(index) ? (
+                <text
+                  key={`${point.title}-label`}
+                  x={xAt(index)}
+                  y={height - 8}
+                  textAnchor={index === 0 ? "start" : index === list.length - 1 ? "end" : "middle"}
+                  fill="#a06a80"
+                  fontSize="11"
+                >
+                  {point.label}
+                </text>
+              ) : null
+            )}
+          </svg>
+          {active && hover !== null && (
+            <p
+              className="pointer-events-none absolute z-10 rounded-full px-2.5 py-1 text-xs whitespace-nowrap text-white"
+              style={{
+                left: `${(xAt(hover) / width) * 100}%`,
+                top: `${(yAt(active.count) / height) * 100}%`,
+                transform:
+                  yAt(active.count) < 48
+                    ? "translate(-50%, 8px)"
+                    : "translate(-50%, calc(-100% - 8px))",
+                background: PINK_DEEP,
+              }}
+            >
+              {active.title}: {people}
+            </p>
+          )}
+        </div>
+      )}
+    </Panel>
   );
 }
 
