@@ -122,6 +122,25 @@ async function main() {
   `;
   console.log("✔ Tables `users`, `sessions` and `password_resets` are ready.");
 
+  // Keep in sync with ensureTable() in lib/instagram-schedule.ts.
+  await sql`
+    CREATE TABLE IF NOT EXISTS instagram_posts (
+      id text PRIMARY KEY,
+      post_date text NOT NULL,
+      caption text NOT NULL DEFAULT '',
+      status text NOT NULL DEFAULT 'pending',
+      image_bytes bytea,
+      image_type text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS instagram_posts_schedule_idx
+    ON instagram_posts (post_date, created_at)
+  `;
+  console.log("✔ Table `instagram_posts` is ready.");
+
   const dataFile = path.join(projectRoot, "data", "jobs.json");
   if (!fs.existsSync(dataFile)) {
     console.log("• No data/jobs.json found — nothing to import. Table is empty and ready.");

@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/admin/signups", id: "signups", label: "Sign-ups" },
   { href: "/admin/onboarding", id: "emails", label: "Email Lists" },
   { href: "/admin/alerts", id: "alerts", label: "Alerts" },
+  { href: "/admin/instagram", id: "instagram", label: "Insta schedule" },
   { href: "/admin", id: "postings", label: "Job postings" },
 ] as const;
 
@@ -19,6 +20,7 @@ function activeId(path: string) {
   if (path.startsWith("/admin/signups")) return "signups";
   if (path.startsWith("/admin/onboarding")) return "emails";
   if (path.startsWith("/admin/alerts")) return "alerts";
+  if (path.startsWith("/admin/instagram")) return "instagram";
   return "postings";
 }
 
@@ -70,6 +72,15 @@ function ItemIcon({ id }: { id: (typeof ITEMS)[number]["id"] | "logout" }) {
       <Glyph>
         <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2H4.5L6 16z" />
         <path d="M10 19a2 2 0 0 0 4 0" />
+      </Glyph>
+    );
+  }
+  if (id === "instagram") {
+    return (
+      <Glyph>
+        <rect x="4" y="4" width="16" height="16" rx="4" />
+        <circle cx="12" cy="12" r="3.25" />
+        <circle cx="17.2" cy="6.8" r="0.9" fill="currentColor" stroke="none" />
       </Glyph>
     );
   }
