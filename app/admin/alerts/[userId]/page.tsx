@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AdminNav } from "@/components/AdminNav";
 import { CopyAlertEmail } from "@/components/CopyAlertEmail";
 import { isAuthed } from "@/lib/auth";
 import { alertUnsubscribeUrl, getAlertPreview, parseAlertSince, renderAlertEmail } from "@/lib/alerts";
@@ -38,7 +37,6 @@ export default async function AlertPreviewPage({
 
   return (
     <div className="flex-1 bg-neutral-50">
-      <AdminNav current="alerts" />
       <header className="border-b border-neutral-200 bg-white">
         <div className="max-w-3xl mx-auto px-4 py-6">
           <p className="text-sm">

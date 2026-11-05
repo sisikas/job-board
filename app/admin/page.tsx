@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AdminNav } from "@/components/AdminNav";
 import type { Job } from "@/lib/jobs";
 import { todayISODate } from "@/lib/format";
 import { COUNTRIES } from "@/lib/countries";
@@ -300,7 +299,6 @@ export default function AdminPage() {
 
   return (
     <div className="flex-1 bg-neutral-50">
-      <AdminNav current="postings" />
       <header className="border-b border-neutral-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <h1 className="text-xl font-semibold text-neutral-900">

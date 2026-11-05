@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { AdminNav } from "@/components/AdminNav";
 import { isAuthed } from "@/lib/auth";
 import { listSignups } from "@/lib/users";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
@@ -17,7 +16,6 @@ export default async function SignupsPage() {
 
   return (
     <div className="flex-1 bg-neutral-50">
-      <AdminNav current="signups" />
       <header className="border-b border-neutral-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <h1 className="text-xl font-semibold text-neutral-900">Sign-ups</h1>

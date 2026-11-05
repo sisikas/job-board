@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AdminNav } from "@/components/AdminNav";
 import { isAuthed } from "@/lib/auth";
 import { LocalTime } from "@/components/LocalTime";
 import {
@@ -89,7 +88,6 @@ export default async function AlertsPage({
 
   return (
     <div className="flex-1 bg-neutral-50">
-      <AdminNav current="alerts" />
       <header className="border-b border-neutral-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 py-6">
           <h1 className="text-xl font-semibold text-neutral-900">Job alerts</h1>

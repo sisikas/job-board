@@ -174,76 +174,6 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <label
-        className="flex w-fit items-center gap-2 rounded-full px-4 py-2 text-sm font-medium"
-        style={{ background: "white", color: PINK_DEEP, border: `1px solid ${PINK_LINE}` }}
-      >
-        <input
-          type="checkbox"
-          checked={excludeGreece}
-          onChange={(event) => setExcludeGreece(event.target.checked)}
-          className="h-4 w-4"
-          style={{ accentColor: PINK }}
-        />
-        Exclude Greece
-      </label>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["24h", "Last day"],
-              [3, "Past 3 days"],
-              [7, "Past 7 days"],
-              [28, "Past 28 days"],
-            ] as const
-          ).map(([days, label]) => (
-            <button
-              key={days}
-              type="button"
-              onClick={() => applyPreset(days)}
-              className="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
-              style={
-                preset === days
-                  ? { background: PINK, color: "white" }
-                  : { background: "white", color: PINK_DEEP, border: `1px solid ${PINK_LINE}` }
-              }
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm" style={{ color: PINK_MUTED }}>
-          <label className="flex items-center gap-2">
-            From
-            <input
-              type="date"
-              value={start}
-              max={end}
-              onChange={(event) => {
-                setPreset(null);
-                setStart(event.target.value);
-              }}
-              className="rounded-full bg-white px-3 py-1.5"
-              style={{ border: `1px solid ${PINK_LINE}`, color: PINK_DEEP }}
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            to
-            <input
-              type="date"
-              value={end}
-              min={start}
-              onChange={(event) => {
-                setPreset(null);
-                setEnd(event.target.value);
-              }}
-              className="rounded-full bg-white px-3 py-1.5"
-              style={{ border: `1px solid ${PINK_LINE}`, color: PINK_DEEP }}
-            />
-          </label>
-        </div>
-      </div>
-
       <div className="flex gap-1" style={{ borderBottom: `1px solid ${PINK_LINE}` }} role="tablist">
         {(
           [
@@ -276,6 +206,92 @@ export function AnalyticsDashboard() {
             </button>
           );
         })}
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["24h", "Last day"],
+              [3, "Past 3 days"],
+              [7, "Past 7 days"],
+              [28, "Past 28 days"],
+            ] as const
+          ).map(([days, label]) => (
+            <button
+              key={days}
+              type="button"
+              onClick={() => applyPreset(days)}
+              className="rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
+              style={
+                preset === days
+                  ? { background: PINK, color: "white" }
+                  : { background: "white", color: PINK_DEEP, border: `1px solid ${PINK_LINE}` }
+              }
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            type="button"
+            aria-pressed={excludeGreece}
+            onClick={() => setExcludeGreece((value) => !value)}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium"
+            style={{
+              background: excludeGreece ? "#cfe6b0" : "#e7f6d4",
+              color: "#2f5c16",
+              border: "1px solid #7eaf4a",
+            }}
+          >
+            {excludeGreece && (
+              <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 8.5l3.2 3.2L13 4.5" />
+              </svg>
+            )}
+            <span
+              aria-hidden="true"
+              className="flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border bg-white"
+              style={{ borderColor: "#3d6b22" }}
+            >
+              {excludeGreece && (
+                <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none" stroke="#2f5c16" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3.2 8.4l3 3.1L12.8 4.6" />
+                </svg>
+              )}
+            </span>
+            Exclude Greece
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm" style={{ color: PINK_MUTED }}>
+          <label className="flex items-center gap-2">
+            From
+            <input
+              type="date"
+              value={start}
+              max={end}
+              onChange={(event) => {
+                setPreset(null);
+                setStart(event.target.value);
+              }}
+              className="rounded-full bg-white px-3 py-1.5"
+              style={{ border: `1px solid ${PINK_LINE}`, color: PINK_DEEP }}
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            to
+            <input
+              type="date"
+              value={end}
+              min={start}
+              onChange={(event) => {
+                setPreset(null);
+                setEnd(event.target.value);
+              }}
+              className="rounded-full bg-white px-3 py-1.5"
+              style={{ border: `1px solid ${PINK_LINE}`, color: PINK_DEEP }}
+            />
+          </label>
+        </div>
       </div>
 
       {load.status === "loading" && (
