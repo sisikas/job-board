@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { searchJobs } from "@/lib/jobs";
 import { getCurrentUser } from "@/lib/users";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -105,6 +106,15 @@ export default async function Home({
           </div>
           Have a question about a specific role? Send a DM and mention the
           role and location.
+          <p className="mt-3">
+            <Link href="/privacy" className="underline underline-offset-2">
+              Privacy policy
+            </Link>
+            {" · "}
+            <Link href="/terms" className="underline underline-offset-2">
+              Terms of service
+            </Link>
+          </p>
         </div>
       </footer>
     </div>
