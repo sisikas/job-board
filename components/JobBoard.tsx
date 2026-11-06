@@ -234,16 +234,18 @@ function PlaceholderRow() {
 function LockedRows({
   teaser,
   className,
+  frameClassName = "",
   teaserPosition = "items-center",
   children,
 }: {
   teaser: ReactNode;
   className: string;
+  frameClassName?: string;
   teaserPosition?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="relative">
+    <div className={`relative ${frameClassName}`}>
       <div aria-hidden="true" className={`${className} blur-[3px] select-none pointer-events-none`}>
         {children}
       </div>
@@ -410,10 +412,11 @@ export function JobBoard({
           {mobileTeaser && (
             <LockedRows
               teaser={mobileTeaser}
-              className="mt-3 flex flex-col gap-3"
-              teaserPosition="items-start pt-24"
+              className="mt-3"
+              frameClassName="min-h-64"
+              teaserPosition="items-center"
             >
-              {repeat(3, (i) => <PlaceholderCard key={i} />)}
+              <PlaceholderCard />
             </LockedRows>
           )}
         </div>
