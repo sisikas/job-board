@@ -22,6 +22,10 @@ type Props = {
   onComplete?: (result: OnboardingResult) => void | Promise<void>;
   roles?: string[];
   locationSuggestions?: string[];
+  initialRoles?: string[];
+  initialLocations?: string[];
+  /** Edit roles and places only. Alerts stay on. */
+  preferencesOnly?: boolean;
 };
 
 const DEFAULT_ROLES = [
@@ -52,10 +56,13 @@ export default function OnboardingFlow({
   onComplete,
   roles: roleOptions = DEFAULT_ROLES,
   locationSuggestions = DEFAULT_PLACES,
+  initialRoles = [],
+  initialLocations = [],
+  preferencesOnly = false,
 }: Props) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [roles, setRoles] = useState<string[]>([]);
-  const [places, setPlaces] = useState<string[]>([]);
+  const [roles, setRoles] = useState<string[]>(initialRoles);
+  const [places, setPlaces] = useState<string[]>(initialLocations);
   const [query, setQuery] = useState("");
   const [otherOpen, setOtherOpen] = useState(false);
   const [roleDraft, setRoleDraft] = useState("");
@@ -292,8 +299,11 @@ export default function OnboardingFlow({
               ))}
             </div>
             <div style={{ flex: 1 }} />
-            <PrimaryButton disabled={cantContinue} onClick={() => setStep(3)}>
-              Continue
+            <PrimaryButton
+              disabled={cantContinue || saving}
+              onClick={() => (preferencesOnly ? finish(true) : setStep(3))}
+            >
+              {preferencesOnly ? "Save" : "Continue"}
             </PrimaryButton>
           </div>
         )}
@@ -329,7 +339,9 @@ export default function OnboardingFlow({
                 <path d="M5 12.5l4.5 4.5L19 7.5" />
               </svg>
             </div>
-            <h1 style={s.h1}>All set! Great kitchens, here we come.</h1>
+            <h1 style={s.h1}>
+              {preferencesOnly ? "Saved. Your alerts will follow these." : "All set! Great kitchens, here we come."}
+            </h1>
             <div style={{ flex: 1 }} />
             <a href="/" style={s.darkLink}>Start browsing</a>
           </div>

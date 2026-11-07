@@ -147,29 +147,6 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
       {open && (
         <div id="phone-menu" className="px-4 pb-4">
           <div className="rounded-[28px] px-5 pt-2 pb-4" style={{ background: "#FCFAF4" }}>
-            <Link
-              href="/"
-              className="flex items-center justify-between py-4 text-[17px] font-semibold"
-              style={{ color: "#231F17" }}
-              onClick={close}
-            >
-              Browse jobs
-              <Chevron />
-            </Link>
-            {!signedIn && !forKitchens && (
-              <button
-                type="button"
-                className="flex w-full items-center justify-between py-4 text-left text-[17px] font-semibold"
-                style={{ color: "#231F17" }}
-                onClick={() => {
-                  close();
-                  openAuth("/", "signup");
-                }}
-              >
-                Job alerts
-                <Chevron />
-              </button>
-            )}
             {!signedIn && !forKitchens && (
               <button
                 type="button"
@@ -183,6 +160,26 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
                 Log in
                 <Chevron />
               </button>
+            )}
+            <Link
+              href="/"
+              className="flex items-center justify-between py-4 text-[17px] font-semibold"
+              style={{ color: "#231F17" }}
+              onClick={close}
+            >
+              Browse jobs
+              <Chevron />
+            </Link>
+            {!forKitchens && (
+              <Link
+                href="/job-alerts"
+                className="flex items-center justify-between py-4 text-[17px] font-semibold"
+                style={{ color: "#231F17" }}
+                onClick={close}
+              >
+                Get job alerts
+                <Chevron />
+              </Link>
             )}
             <div className="my-2 h-px" style={{ background: "#eadfc4" }} />
             <div className="rounded-3xl px-5 pt-5 pb-4" style={{ background: "#4E6B1F" }}>

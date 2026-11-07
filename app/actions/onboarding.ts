@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getCurrentUser, saveUserOnboarding } from "@/lib/users";
 
 export async function completeOnboarding(result: {
@@ -15,6 +16,7 @@ export async function completeOnboarding(result: {
       locations: result.locations,
       emailAlerts: result.emailAlerts,
     });
+    revalidatePath("/job-alerts");
   } catch (error) {
     console.error("Onboarding could not be saved.", error);
   }

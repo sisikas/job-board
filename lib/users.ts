@@ -357,6 +357,42 @@ function cleanChoices(values: string[]) {
   return cleaned;
 }
 
+export type JobAlertProfile = {
+  emailAlerts: boolean;
+  unsubscribed: boolean;
+  onboarded: boolean;
+  roles: string[];
+  locations: string[];
+};
+
+/** Whether this account is on job alerts, and the roles and places they picked. */
+export async function getJobAlertProfile(userId: string): Promise<JobAlertProfile | null> {
+  await ensureTables();
+  const rows = await getSql()<
+    {
+      email_alerts: boolean;
+      unsubscribed_at: Date | null;
+      onboarded_at: Date | null;
+      roles: string[] | null;
+      locations: string[] | null;
+    }[]
+  >`
+    SELECT email_alerts, unsubscribed_at, onboarded_at, roles, locations
+    FROM users
+    WHERE id = ${userId}
+    LIMIT 1
+  `;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    emailAlerts: row.email_alerts,
+    unsubscribed: row.unsubscribed_at != null,
+    onboarded: row.onboarded_at != null,
+    roles: row.roles ?? [],
+    locations: row.locations ?? [],
+  };
+}
+
 export async function hasCompletedOnboarding(userId: string): Promise<boolean> {
   await ensureTables();
   const rows = await getSql()<{ onboarded_at: Date | null }[]>`
@@ -372,12 +408,14 @@ export async function saveUserOnboarding(
   await ensureTables();
   const roles = cleanChoices(input.roles);
   const locations = cleanChoices(input.locations);
+  const alertsOn = input.emailAlerts === true;
   await getSql()`
     UPDATE users
     SET roles = ${roles},
         locations = ${locations},
-        email_alerts = ${input.emailAlerts === true},
-        onboarded_at = now()
+        email_alerts = ${alertsOn},
+        onboarded_at = COALESCE(onboarded_at, now()),
+        unsubscribed_at = CASE WHEN ${alertsOn} THEN NULL ELSE unsubscribed_at END
     WHERE id = ${userId}
   `;
 }
