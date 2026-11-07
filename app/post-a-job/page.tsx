@@ -5,7 +5,7 @@ import { PostJobForm } from "@/components/PostJobForm";
 export const metadata: Metadata = {
   title: "Post a job — The Good Sort",
   description:
-    "Every job here gets a proper read before it goes up. Better listings bring better applicants, so it’s worth the extra step! We’ll be in touch within a day.",
+    "We look at every job before it goes live. This keeps the board full of good places, which is why good people keep checking it! We’ll review and be in touch within a day.",
 };
 
 const MONTHLY = "mailto:thegoodsort.jobs@gmail.com?subject=Monthly%20plan";
@@ -18,8 +18,8 @@ export default function PostJobPage() {
         <div>
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Post a job</h1>
           <p className="mt-3 max-w-xl text-base leading-relaxed" style={{ color: "#5C5140" }}>
-            Every job here gets a proper read before it goes up. Better listings bring better
-            applicants, so it’s worth the extra step! We’ll be in touch within a day.
+            We look at every job before it goes live. This keeps the board full of good places,
+            which is why good people keep checking it! We’ll review and be in touch within a day.
           </p>
           <div className="mt-6">
             <PostJobForm />
