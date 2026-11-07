@@ -22,7 +22,12 @@ function ForKitchensLink({ className = "text-xs underline decoration-1 underline
   );
 }
 
+function isForKitchens(pathname: string) {
+  return pathname === "/for-kitchens" || pathname.startsWith("/for-kitchens/");
+}
+
 function AccountActions({ signedIn, className }: { signedIn: boolean; className: string }) {
+  const pathname = usePathname();
   const filled = { background: "var(--brand-logo-green)", color: "#fff" };
   const outline = {
     color: "var(--brand-logo-green)",
@@ -31,7 +36,11 @@ function AccountActions({ signedIn, className }: { signedIn: boolean; className:
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-2 md:gap-x-4">
-      {signedIn ? (
+      {isForKitchens(pathname) ? (
+        <Link href="/" className={className} style={filled}>
+          Find a job
+        </Link>
+      ) : signedIn ? (
         <form action={logout}>
           <button type="submit" className={className} style={filled}>
             Log out
@@ -47,8 +56,12 @@ function AccountActions({ signedIn, className }: { signedIn: boolean; className:
           </button>
         </>
       )}
-      <span aria-hidden="true" className="h-3.5 w-px md:h-5" style={{ background: "#c9b48a" }} />
-      <ForKitchensLink />
+      {!isForKitchens(pathname) && (
+        <>
+          <span aria-hidden="true" className="h-3.5 w-px md:h-5" style={{ background: "#c9b48a" }} />
+          <ForKitchensLink />
+        </>
+      )}
     </div>
   );
 }
@@ -75,6 +88,7 @@ function Chevron() {
 
 function MobileNav({ signedIn }: { signedIn: boolean }) {
   const pathname = usePathname();
+  const forKitchens = isForKitchens(pathname);
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const pill = "rounded-full px-4 py-2 text-sm font-bold";
@@ -106,7 +120,11 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="The Good Sort" className="h-auto w-24" />
         </Link>
-        {signedIn ? (
+        {forKitchens ? (
+          <Link href="/" className={pill} style={filled}>
+            Find a job
+          </Link>
+        ) : signedIn ? (
           <form action={logout}>
             <button type="submit" className={pill} style={filled}>
               Log out
@@ -138,7 +156,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
               Browse jobs
               <Chevron />
             </Link>
-            {!signedIn && (
+            {!signedIn && !forKitchens && (
               <button
                 type="button"
                 className="flex w-full items-center justify-between py-4 text-left text-[17px] font-semibold"
@@ -152,7 +170,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
                 <Chevron />
               </button>
             )}
-            {!signedIn && (
+            {!signedIn && !forKitchens && (
               <button
                 type="button"
                 className="flex w-full items-center justify-between py-4 text-left text-[17px] font-semibold"
@@ -175,7 +193,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
                 For kitchens
               </Link>
               <Link
-                href="/post-a-job"
+                href={forKitchens ? "/post-a-job" : "/for-kitchens"}
                 className="mt-4 block rounded-full py-3 text-center text-[16px] font-bold"
                 style={{ background: "#F6E8BB", color: "#2E3F12" }}
                 onClick={close}
