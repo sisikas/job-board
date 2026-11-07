@@ -141,6 +141,27 @@ async function main() {
   `;
   console.log("✔ Table `instagram_posts` is ready.");
 
+  // Keep in sync with ensureTable() in lib/job-requests.ts.
+  await sql`
+    CREATE TABLE IF NOT EXISTS job_requests (
+      id text PRIMARY KEY,
+      email text NOT NULL,
+      business text NOT NULL,
+      role text NOT NULL,
+      city text NOT NULL,
+      pay text NOT NULL DEFAULT '',
+      description text NOT NULL,
+      about text NOT NULL,
+      apply text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS job_requests_created_idx
+    ON job_requests (created_at DESC)
+  `;
+  console.log("✔ Table `job_requests` is ready.");
+
   const dataFile = path.join(projectRoot, "data", "jobs.json");
   if (!fs.existsSync(dataFile)) {
     console.log("• No data/jobs.json found — nothing to import. Table is empty and ready.");

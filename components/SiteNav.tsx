@@ -53,8 +53,6 @@ function AccountActions({ signedIn, className }: { signedIn: boolean; className:
   );
 }
 
-const POST_JOB = "mailto:thegoodsort.jobs@gmail.com?subject=Post%20a%20job";
-
 function MenuIcon({ open }: { open: boolean }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -176,13 +174,14 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
               <Link href="/for-kitchens" className="mt-1 block text-[28px] leading-tight font-bold text-white" onClick={close}>
                 For kitchens
               </Link>
-              <a
-                href={POST_JOB}
+              <Link
+                href="/post-a-job"
                 className="mt-4 block rounded-full py-3 text-center text-[16px] font-bold"
                 style={{ background: "#F6E8BB", color: "#2E3F12" }}
+                onClick={close}
               >
                 Post a job
-              </a>
+              </Link>
             </div>
           </div>
         </div>

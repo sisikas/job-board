@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 
 export const metadata: Metadata = {
@@ -6,8 +7,6 @@ export const metadata: Metadata = {
   description:
     "Your job goes straight to professionals who follow The Good Sort and live for good food. One flat price, no agency cut.",
 };
-
-const POST_JOB = "mailto:thegoodsort.jobs@gmail.com?subject=Post%20a%20job";
 
 function Tick() {
   return (
@@ -172,13 +171,13 @@ export default function ForKitchensPage() {
               cut.
             </p>
             <div className="mt-2 flex flex-wrap gap-3">
-              <a
-                href={POST_JOB}
+              <Link
+                href="/post-a-job"
                 className="rounded-full px-6 py-3.5 text-[16px] font-bold text-white"
                 style={{ background: "#4E6B1F" }}
               >
                 Post a job · £39
-              </a>
+              </Link>
               <a
                 href="#featured"
                 className="rounded-full border-2 bg-transparent px-6 py-3 text-[16px] font-bold"
@@ -281,13 +280,13 @@ export default function ForKitchensPage() {
           <h2 className="max-w-[18em] text-balance text-[40px] leading-tight font-bold">
             Put your job in front of the right people this week
           </h2>
-          <a
-            href={POST_JOB}
+          <Link
+            href="/post-a-job"
             className="rounded-full px-7 py-4 text-[17px] font-bold"
             style={{ background: "#F6E8BB", color: "#2E3F12" }}
           >
             Post a job
-          </a>
+          </Link>
         </section>
       </div>
     </div>
