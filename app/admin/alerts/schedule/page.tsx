@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AlertsTabs } from "@/components/AlertsTabs";
 import { AlertSchedule } from "@/components/AlertSchedule";
 import { isAuthed } from "@/lib/auth";
-import { listAlertSentDays } from "@/lib/alert-schedule";
+import { listAlertDays } from "@/lib/alert-schedule";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Alerts Schedule — Admin" };
@@ -43,7 +43,7 @@ export default async function AlertSchedulePage({
   const next = shiftMonth(year, month, 1);
   const end = `${next.year}-${pad(next.month)}-01`;
   const previous = shiftMonth(year, month, -1);
-  const sentDays = await listAlertSentDays(start, end);
+  const days = await listAlertDays(start, end);
   const title = new Date(Date.UTC(year, month - 1, 1)).toLocaleString("en-GB", {
     month: "long",
     year: "numeric",
@@ -56,7 +56,7 @@ export default async function AlertSchedulePage({
         <div className="mx-auto max-w-6xl px-4 pt-6">
           <h1 className="text-xl font-semibold text-neutral-900">Send Alerts</h1>
           <p className="mt-0.5 text-sm text-neutral-500">
-            Tick a day when an alert has gone out. Leave it clear when it has not.
+            Tick Sent when an alert has gone out. Click a date to add, edit, or delete a note.
           </p>
           <AlertsTabs current="schedule" />
         </div>
@@ -80,7 +80,7 @@ export default async function AlertSchedulePage({
             </Link>
           </div>
         </div>
-        <AlertSchedule key={`${year}-${month}`} year={year} month={month} sentDays={sentDays} />
+        <AlertSchedule key={`${year}-${month}`} year={year} month={month} days={days} />
       </main>
     </div>
   );

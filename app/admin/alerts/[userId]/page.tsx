@@ -75,6 +75,7 @@ export default async function AlertPreviewPage({
                     subject={version.subject}
                     html={version.html}
                     text={version.text}
+                    email={person?.email}
                     showSubject={index === 0}
                   />
                 </div>

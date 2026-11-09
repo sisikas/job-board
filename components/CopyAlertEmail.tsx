@@ -6,15 +6,22 @@ type Props = {
   subject: string;
   html: string;
   text: string;
+  email?: string;
   showSubject?: boolean;
 };
 
-export function CopyAlertEmail({ subject, html, text, showSubject = true }: Props) {
+export function CopyAlertEmail({ subject, html, text, email, showSubject = true }: Props) {
   const [notice, setNotice] = useState("");
 
   async function copySubject() {
     await navigator.clipboard.writeText(subject);
     setNotice("Subject copied. Paste it into Gmail’s subject line.");
+  }
+
+  async function copyAddress() {
+    if (!email) return;
+    await navigator.clipboard.writeText(email);
+    setNotice("Email address copied.");
   }
 
   async function copyForGmail() {
@@ -49,6 +56,15 @@ export function CopyAlertEmail({ subject, html, text, showSubject = true }: Prop
       >
         Copy for Gmail
       </button>
+      {email && (
+        <button
+          type="button"
+          onClick={copyAddress}
+          className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-100"
+        >
+          Copy email address
+        </button>
+      )}
       {notice && <p className="w-full text-sm text-neutral-600">{notice}</p>}
     </div>
   );

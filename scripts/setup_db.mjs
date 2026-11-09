@@ -166,9 +166,13 @@ async function main() {
   await sql`
     CREATE TABLE IF NOT EXISTS alert_sent_days (
       day date PRIMARY KEY,
+      sent boolean NOT NULL DEFAULT true,
+      note text NOT NULL DEFAULT '',
       created_at timestamptz NOT NULL DEFAULT now()
     )
   `;
+  await sql`ALTER TABLE alert_sent_days ADD COLUMN IF NOT EXISTS sent boolean NOT NULL DEFAULT true`;
+  await sql`ALTER TABLE alert_sent_days ADD COLUMN IF NOT EXISTS note text NOT NULL DEFAULT ''`;
   console.log("✔ Table `alert_sent_days` is ready.");
 
   const dataFile = path.join(projectRoot, "data", "jobs.json");
