@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AlertConditions } from "@/components/AlertConditions";
 import { AlertsTabs } from "@/components/AlertsTabs";
 import { isAuthed } from "@/lib/auth";
 import { LocalTime } from "@/components/LocalTime";
@@ -118,33 +119,13 @@ export default async function AlertsPage({
             >
               Update preview
             </button>
+            <AlertConditions />
             {since && (
               <a href="/admin/alerts" className="text-sm text-neutral-500 underline underline-offset-2">
                 Show every job
               </a>
             )}
           </div>
-          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-neutral-600">
-            <li>
-              A person is included only when they asked for alerts and have not unsubscribed.
-              People who said no at signup are left out.
-            </li>
-            <li>
-              The job&apos;s role must be one of their roles. Chef and Sous Chef stay separate.
-              Part-time and private versions of that same role are included, in any spacing or
-              punctuation, such as Chef (part-time) or Private Chef.
-            </li>
-            <li>
-              The job&apos;s city or country must be one of their places. A country covers every job in
-              that country. Anywhere covers every city.
-            </li>
-            <li>All of one person&apos;s matches go in a single email.</li>
-            <li>
-              The job&apos;s admin date must be after the day they subscribed. If they have already
-              been emailed, it must also be after that last email. The employer&apos;s posted date is
-              not used.
-            </li>
-          </ul>
           {invalidSince && (
             <p className="mt-3 text-sm text-red-700">Enter a real date. The preview is showing every job.</p>
           )}
