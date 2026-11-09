@@ -1,7 +1,8 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { Job } from "@/lib/jobs";
 import { formatDate } from "@/lib/format";
+import { GatedJobCard } from "@/components/GatedJobCard";
 import { SignupTeaser } from "@/components/SignupTeaser";
 
 const cardStyle = {
@@ -16,6 +17,33 @@ function place(job: Job) {
 function jobHref(id: string, returnTo: string) {
   if (!returnTo || returnTo === "/") return `/jobs/${id}`;
   return `/jobs/${id}?from=${encodeURIComponent(returnTo)}`;
+}
+
+function JobOpen({
+  gate,
+  href,
+  className,
+  style,
+  children,
+}: {
+  gate: boolean;
+  href: string;
+  className: string;
+  style: CSSProperties;
+  children: ReactNode;
+}) {
+  if (gate) {
+    return (
+      <GatedJobCard next={href} className={`${className} w-full cursor-pointer text-left`} style={style}>
+        {children}
+      </GatedJobCard>
+    );
+  }
+  return (
+    <Link href={href} className={className} style={style}>
+      {children}
+    </Link>
+  );
 }
 
 function ResultsSummary({
@@ -71,12 +99,13 @@ function EmptyState() {
   );
 }
 
-function CardList({ jobs, returnTo }: { jobs: Job[]; returnTo: string }) {
+function CardList({ jobs, returnTo, gate = false }: { jobs: Job[]; returnTo: string; gate?: boolean }) {
   return (
     <ul className="flex flex-col gap-3">
       {jobs.map((job) => (
         <li key={job.id}>
-          <Link
+          <JobOpen
+            gate={gate}
             href={jobHref(job.id, returnTo)}
             className="block rounded-2xl p-5 transition-shadow hover:shadow-md"
             style={cardStyle}
@@ -111,7 +140,7 @@ function CardList({ jobs, returnTo }: { jobs: Job[]; returnTo: string }) {
             >
               View details &rarr;
             </span>
-          </Link>
+          </JobOpen>
         </li>
       ))}
     </ul>
@@ -160,12 +189,13 @@ function JobGrid({ jobs, twoColumns, returnTo }: { jobs: Job[]; twoColumns?: boo
   );
 }
 
-function RowList({ jobs, returnTo }: { jobs: Job[]; returnTo: string }) {
+function RowList({ jobs, returnTo, gate = false }: { jobs: Job[]; returnTo: string; gate?: boolean }) {
   return (
     <ul className="flex flex-col gap-2.5">
       {jobs.map((job) => (
         <li key={job.id}>
-          <Link
+          <JobOpen
+            gate={gate}
             href={jobHref(job.id, returnTo)}
             className="flex items-center gap-6 rounded-2xl px-5 py-4 transition-shadow hover:shadow-md"
             style={cardStyle}
@@ -192,7 +222,7 @@ function RowList({ jobs, returnTo }: { jobs: Job[]; returnTo: string }) {
                 View &rarr;
               </span>
             </div>
-          </Link>
+          </JobOpen>
         </li>
       ))}
     </ul>
@@ -329,6 +359,7 @@ function SidebarBoard({
   searchStacked,
   teaser,
   returnTo,
+  gate,
 }: {
   jobs: Job[];
   totalCount: number;
@@ -337,6 +368,7 @@ function SidebarBoard({
   searchStacked: ReactNode;
   teaser: ReactNode;
   returnTo: string;
+  gate: boolean;
 }) {
   return (
     <div className="max-w-6xl mx-auto px-6 pt-2 pb-8 grid grid-cols-[260px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)] gap-8 items-start">
@@ -348,7 +380,7 @@ function SidebarBoard({
       </aside>
       <div>
         <ResultsSummary count={totalCount} q={q} location={location} />
-        {jobs.length === 0 ? <EmptyState /> : <RowList jobs={jobs} returnTo={returnTo} />}
+        {jobs.length === 0 ? <EmptyState /> : <RowList jobs={jobs} returnTo={returnTo} gate={gate} />}
         {teaser && (
           <LockedRows teaser={teaser} className="mt-2.5 flex flex-col gap-2.5">
             {repeat(4, (i) => <PlaceholderRow key={i} />)}
@@ -386,6 +418,7 @@ export function JobBoard({
   teaserCount?: number;
 }) {
   const searching = Boolean(q || location);
+  const gateSearch = !signedIn && searching;
   const totalCount = jobs.length + hiddenCount;
   const next = searching ? returnTo : "/";
   const teaser = teaserCount > 0 ? <SignupTeaser hiddenCount={teaserCount} next={next} /> : null;
@@ -417,7 +450,7 @@ export function JobBoard({
               Latest openings
             </h2>
           )}
-          {mobileJobs.length === 0 ? <EmptyState /> : <CardList jobs={mobileJobs} returnTo={returnTo} />}
+          {mobileJobs.length === 0 ? <EmptyState /> : <CardList jobs={mobileJobs} returnTo={returnTo} gate={gateSearch} />}
           {mobileTeaser && (
             <LockedRows
               teaser={mobileTeaser}
@@ -440,6 +473,7 @@ export function JobBoard({
             searchStacked={searchStacked}
             teaser={teaser}
             returnTo={returnTo}
+            gate={gateSearch}
           />
         ) : (
           <HeroBoard jobs={jobs} signedIn={signedIn} searchRow={searchRow} teaser={teaser} returnTo={returnTo} />
