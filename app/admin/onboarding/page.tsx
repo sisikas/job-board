@@ -4,7 +4,7 @@ import { listOnboardingAnswers, type OnboardingAnswer } from "@/lib/users";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
 import { LocalTime } from "@/components/LocalTime";
 
-export const metadata = { title: "Email Lists — Admin" };
+export const metadata = { title: "Email Subscribers — Admin" };
 
 function choiceList(values: string[]) {
   return values.length > 0 ? values.join(", ") : "—";
@@ -123,7 +123,7 @@ export default async function OnboardingAdminPage() {
     <div className="flex-1 bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-xl font-semibold text-neutral-900">Email Lists</h1>
+          <h1 className="text-xl font-semibold text-neutral-900">Email Subscribers</h1>
           <p className="text-sm text-neutral-500 mt-0.5">
             Roles, places, and email alerts people chose after signing up.
           </p>

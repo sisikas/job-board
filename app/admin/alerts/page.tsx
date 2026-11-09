@@ -13,7 +13,7 @@ import {
 import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Job alerts — Admin" };
+export const metadata = { title: "Send Alerts — Admin" };
 
 function alertsHref(since: string | null, userId?: string) {
   const path = userId ? `/admin/alerts/${userId}` : "/admin/alerts";
@@ -90,7 +90,7 @@ export default async function AlertsPage({
     <div className="flex-1 bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-xl font-semibold text-neutral-900">Job alerts</h1>
+          <h1 className="text-xl font-semibold text-neutral-900">Send Alerts</h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             Who would get an email if you sent now, and which jobs would be in it.
             This page only previews. It does not send email or change anyone&apos;s last-emailed date.

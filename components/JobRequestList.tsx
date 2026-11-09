@@ -108,7 +108,7 @@ export function JobRequestList({ requests }: { requests: JobRequest[] }) {
   return (
     <>
       <label className="mb-4 block">
-        <span className="sr-only">Search job requests</span>
+        <span className="sr-only">Search ad requests</span>
         <input
           type="search"
           value={query}

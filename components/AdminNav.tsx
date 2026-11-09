@@ -7,10 +7,10 @@ import { useEffect, useState, type ReactNode } from "react";
 const ITEMS = [
   { href: "/admin/analytics", id: "analytics", label: "Analytics" },
   { href: "/admin/signups", id: "signups", label: "Sign-ups" },
-  { href: "/admin/onboarding", id: "emails", label: "Email Lists" },
-  { href: "/admin/alerts", id: "alerts", label: "Alerts" },
+  { href: "/admin/onboarding", id: "emails", label: "Email Subscribers" },
+  { href: "/admin/alerts", id: "alerts", label: "Send Alerts" },
   { href: "/admin/instagram", id: "instagram", label: "Insta schedule" },
-  { href: "/admin/requests", id: "requests", label: "Job requests" },
+  { href: "/admin/requests", id: "requests", label: "Ad Requests" },
   { href: "/admin", id: "postings", label: "Job postings" },
 ] as const;
 
