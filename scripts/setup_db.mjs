@@ -162,6 +162,15 @@ async function main() {
   `;
   console.log("✔ Table `job_requests` is ready.");
 
+  // Keep in sync with ensureTable() in lib/alert-schedule.ts.
+  await sql`
+    CREATE TABLE IF NOT EXISTS alert_sent_days (
+      day date PRIMARY KEY,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  console.log("✔ Table `alert_sent_days` is ready.");
+
   const dataFile = path.join(projectRoot, "data", "jobs.json");
   if (!fs.existsSync(dataFile)) {
     console.log("• No data/jobs.json found — nothing to import. Table is empty and ready.");
