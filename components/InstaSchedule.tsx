@@ -49,6 +49,46 @@ function waitingLine(posts: InstaPost[], today: string) {
   return `${count}. Next is ${formatDay(oldest.postDate)}.`;
 }
 
+function imageSrc(post: InstaPost) {
+  return `/api/admin/instagram/${post.id}/image?v=${encodeURIComponent(post.updatedAt)}`;
+}
+
+function ProfileGrid({
+  posts,
+  onPreview,
+}: {
+  posts: InstaPost[];
+  onPreview: (src: string, caption: string) => void;
+}) {
+  const tiles = posts.filter((post) => post.hasImage);
+
+  return (
+    <section aria-label="Instagram grid">
+      <p className="text-xs text-neutral-500">Newest posting date at the top left, in the same 4:5 shape as the photos.</p>
+      {tiles.length === 0 ? (
+        <p className="mt-3 text-sm text-neutral-500">Add an image to a post to see it here.</p>
+      ) : (
+        <div className="mt-3 grid w-full max-w-xl grid-cols-3 gap-1">
+          {tiles.map((post) => {
+            const src = imageSrc(post);
+            return (
+              <button
+                key={post.id}
+                type="button"
+                onClick={() => onPreview(src, post.caption)}
+                aria-label={`View post from ${formatDay(post.postDate)}`}
+                className="aspect-[4/5] overflow-hidden bg-neutral-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+              >
+                <img src={src} alt="" className="h-full w-full object-cover" />
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function dateHint(postDate: string, status: InstaStatus, today: string) {
   if (status !== "pending") return "";
   if (postDate === today) return "Today";
@@ -553,8 +593,7 @@ function PostRow({
     }
   }
 
-  const src =
-    localUrl ?? (post.hasImage ? `/api/admin/instagram/${post.id}/image?v=${encodeURIComponent(post.updatedAt)}` : null);
+  const src = localUrl ?? (post.hasImage ? imageSrc(post) : null);
   const hint = dateHint(postDate, status, today);
 
   return (
@@ -676,6 +715,7 @@ export function InstaSchedule() {
   const [loadError, setLoadError] = useState("");
   const [loadId, setLoadId] = useState(0);
   const [filter, setFilter] = useState<FilterId>("all");
+  const [view, setView] = useState<"grid" | "schedule">("schedule");
   const [notice, setNotice] = useState("");
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
   const closeLightbox = useCallback(() => setLightbox(null), []);
@@ -940,6 +980,43 @@ export function InstaSchedule() {
         </div>
       </form>
 
+      <div role="tablist" aria-label="Instagram views" className="mt-5 inline-flex rounded-xl bg-neutral-100 p-1">
+        {(
+          [
+            ["schedule", "Schedule"],
+            ["grid", "Grid"],
+          ] as const
+        ).map(([id, label]) => {
+          const selected = view === id;
+          return (
+            <button
+              key={id}
+              id={`insta-tab-${id}`}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              aria-controls={`insta-panel-${id}`}
+              onClick={() => setView(id)}
+              className={
+                selected
+                  ? "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white"
+                  : "rounded-lg px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-white"
+              }
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div id="insta-panel-grid" role="tabpanel" aria-labelledby="insta-tab-grid" hidden={view !== "grid"} className="mt-4">
+        <ProfileGrid
+          posts={posts}
+          onPreview={(src, text) => setLightbox({ src, caption: text })}
+        />
+      </div>
+
+      <div id="insta-panel-schedule" role="tabpanel" aria-labelledby="insta-tab-schedule" hidden={view !== "schedule"}>
       <div className="mt-5 mb-3 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-neutral-600">{waitingLine(posts, today)}</p>
         <div role="group" aria-label="Filter posts" className="flex flex-wrap gap-2">
@@ -1002,6 +1079,7 @@ export function InstaSchedule() {
           ))
         )}
       </section>
+      </div>
 
       {lightbox && <Lightbox src={lightbox.src} caption={lightbox.caption} onClose={closeLightbox} />}
     </div>
