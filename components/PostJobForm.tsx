@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
 const field =
@@ -122,6 +123,13 @@ export function PostJobForm() {
         <p className="mt-2 text-base leading-relaxed" style={{ color: "#5C5140" }}>
           We&apos;ll process the ad and come back to you within a day.
         </p>
+        <Link
+          href="/"
+          className="mt-6 inline-block rounded-full px-6 py-3 text-[15px] font-bold text-white"
+          style={{ background: "var(--brand-brick)" }}
+        >
+          Home
+        </Link>
       </div>
     );
   }

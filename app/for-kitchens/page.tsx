@@ -132,7 +132,7 @@ const questions = [
     body: "No. Never have, never will.",
   },
   {
-    title: "Who do you say no to?",
+    title: "Who do we say no to?",
     body: "Agencies, vague listings with no pay, and anywhere we wouldn’t eat.",
   },
   {
@@ -140,7 +140,7 @@ const questions = [
     body: "None. £39 is the whole bill. No add-ons, no auto-renewals, no cut of anyone’s salary. You pay by card once your job’s approved.",
   },
   {
-    title: "What kind of places do you list?",
+    title: "What kind of places do we list?",
     body: "Chef-led independents, bakeries, coffee spots and good neighbourhood restaurants. If it has a point of view on the plate, we’re interested.",
   },
   {

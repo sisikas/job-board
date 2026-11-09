@@ -17,7 +17,7 @@ function ForKitchensLink({ className = "text-xs underline decoration-1 underline
       className={className}
       style={{ color: "#211c14" }}
     >
-      For kitchens
+      Hiring?
     </Link>
   );
 }
@@ -91,8 +91,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
   const forKitchens = isForKitchens(pathname);
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
-  const pill = "rounded-full px-4 py-2 text-sm font-bold";
-  const filled = { background: "var(--brand-logo-green)", color: "#fff" };
+  const row = "flex w-full items-center justify-between py-4 text-left text-[17px] font-semibold";
 
   useEffect(() => {
     setOpen(false);
@@ -100,7 +99,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
 
   return (
     <div className="md:hidden">
-      <div className="relative mx-auto flex h-[108px] max-w-3xl items-center justify-between px-4">
+      <div className="relative mx-auto flex h-[108px] max-w-3xl items-center px-4">
         <button
           type="button"
           className="flex h-11 w-11 items-center justify-center rounded-full"
@@ -120,74 +119,60 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="The Good Sort" className="h-auto w-24" />
         </Link>
-        {forKitchens ? (
-          <Link href="/" className={pill} style={filled}>
-            Find a job
-          </Link>
-        ) : signedIn ? (
-          <form action={logout}>
-            <button type="submit" className={pill} style={filled}>
-              Log out
-            </button>
-          </form>
-        ) : (
-          <button
-            type="button"
-            className={pill}
-            style={filled}
-            onClick={() => {
-              close();
-              openAuth("/", "signup");
-            }}
-          >
-            Sign up
-          </button>
-        )}
       </div>
       {open && (
         <div id="phone-menu" className="px-4 pb-4">
           <div className="rounded-[28px] px-5 pt-2 pb-4" style={{ background: "#FCFAF4" }}>
-            {!signedIn && !forKitchens && (
-              <button
-                type="button"
-                className="flex w-full items-center justify-between py-4 text-left text-[17px] font-semibold"
-                style={{ color: "#231F17" }}
-                onClick={() => {
-                  close();
-                  openAuth("/", "login");
-                }}
-              >
-                Log in
+            {forKitchens ? (
+              <Link href="/" className={row} style={{ color: "#231F17" }} onClick={close}>
+                Find a job
                 <Chevron />
-              </button>
+              </Link>
+            ) : signedIn ? (
+              <form action={logout}>
+                <button type="submit" className={row} style={{ color: "#231F17" }}>
+                  Log out
+                  <Chevron />
+                </button>
+              </form>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className={row}
+                  style={{ color: "#231F17" }}
+                  onClick={() => {
+                    close();
+                    openAuth("/", "signup");
+                  }}
+                >
+                  Sign up
+                  <Chevron />
+                </button>
+                <button
+                  type="button"
+                  className={row}
+                  style={{ color: "#231F17" }}
+                  onClick={() => {
+                    close();
+                    openAuth("/", "login");
+                  }}
+                >
+                  Log in
+                  <Chevron />
+                </button>
+              </>
             )}
-            <Link
-              href="/"
-              className="flex items-center justify-between py-4 text-[17px] font-semibold"
-              style={{ color: "#231F17" }}
-              onClick={close}
-            >
-              Browse jobs
-              <Chevron />
-            </Link>
             {!forKitchens && (
-              <Link
-                href="/job-alerts"
-                className="flex items-center justify-between py-4 text-[17px] font-semibold"
-                style={{ color: "#231F17" }}
-                onClick={close}
-              >
-                Get job alerts
+              <Link href="/" className={row} style={{ color: "#231F17" }} onClick={close}>
+                Browse jobs
                 <Chevron />
               </Link>
             )}
             <div className="my-2 h-px" style={{ background: "#eadfc4" }} />
             <div className="rounded-3xl px-5 pt-5 pb-4" style={{ background: "#4E6B1F" }}>
-              <p className="text-sm" style={{ color: "#E8EFD9" }}>
+              <Link href="/for-kitchens" className="block text-[28px] leading-tight font-bold text-white" onClick={close}>
                 Hiring?
-              </p>
-              <Link href="/for-kitchens" className="mt-1 block text-[28px] leading-tight font-bold text-white" onClick={close}>
-                For kitchens
               </Link>
               <Link
                 href={forKitchens ? "/post-a-job" : "/for-kitchens"}

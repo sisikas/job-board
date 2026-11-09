@@ -13,6 +13,11 @@ function place(job: Job) {
   return `${job.city}${job.country ? `, ${job.country}` : ""}`;
 }
 
+function jobHref(id: string, returnTo: string) {
+  if (!returnTo || returnTo === "/") return `/jobs/${id}`;
+  return `/jobs/${id}?from=${encodeURIComponent(returnTo)}`;
+}
+
 function ResultsSummary({
   count,
   q,
@@ -66,13 +71,13 @@ function EmptyState() {
   );
 }
 
-function CardList({ jobs }: { jobs: Job[] }) {
+function CardList({ jobs, returnTo }: { jobs: Job[]; returnTo: string }) {
   return (
     <ul className="flex flex-col gap-3">
       {jobs.map((job) => (
         <li key={job.id}>
           <Link
-            href={`/jobs/${job.id}`}
+            href={jobHref(job.id, returnTo)}
             className="block rounded-2xl p-5 transition-shadow hover:shadow-md"
             style={cardStyle}
           >
@@ -113,13 +118,13 @@ function CardList({ jobs }: { jobs: Job[] }) {
   );
 }
 
-function JobGrid({ jobs, twoColumns }: { jobs: Job[]; twoColumns?: boolean }) {
+function JobGrid({ jobs, twoColumns, returnTo }: { jobs: Job[]; twoColumns?: boolean; returnTo: string }) {
   return (
     <ul className={`grid grid-cols-2 gap-4 ${twoColumns ? "" : "lg:grid-cols-3"}`}>
       {jobs.map((job) => (
         <li key={job.id}>
           <Link
-            href={`/jobs/${job.id}`}
+            href={jobHref(job.id, returnTo)}
             className="flex h-full flex-col rounded-2xl p-5 transition-shadow hover:shadow-md"
             style={cardStyle}
           >
@@ -155,13 +160,13 @@ function JobGrid({ jobs, twoColumns }: { jobs: Job[]; twoColumns?: boolean }) {
   );
 }
 
-function RowList({ jobs }: { jobs: Job[] }) {
+function RowList({ jobs, returnTo }: { jobs: Job[]; returnTo: string }) {
   return (
     <ul className="flex flex-col gap-2.5">
       {jobs.map((job) => (
         <li key={job.id}>
           <Link
-            href={`/jobs/${job.id}`}
+            href={jobHref(job.id, returnTo)}
             className="flex items-center gap-6 rounded-2xl px-5 py-4 transition-shadow hover:shadow-md"
             style={cardStyle}
           >
@@ -285,11 +290,13 @@ function HeroBoard({
   signedIn,
   searchRow,
   teaser,
+  returnTo,
 }: {
   jobs: Job[];
   signedIn: boolean;
   searchRow: ReactNode;
   teaser: ReactNode;
+  returnTo: string;
 }) {
   return (
     <>
@@ -303,7 +310,7 @@ function HeroBoard({
         <h2 className="mb-4 text-lg font-bold" style={{ color: "var(--brand-ink)" }}>
           Latest openings
         </h2>
-        {jobs.length === 0 ? <EmptyState /> : <JobGrid jobs={jobs} twoColumns={signedIn} />}
+        {jobs.length === 0 ? <EmptyState /> : <JobGrid jobs={jobs} twoColumns={signedIn} returnTo={returnTo} />}
         {teaser && (
           <LockedRows teaser={teaser} className="mt-4 grid grid-cols-2 lg:grid-cols-3 gap-4">
             {repeat(6, (i) => <PlaceholderCard key={i} />)}
@@ -321,6 +328,7 @@ function SidebarBoard({
   location,
   searchStacked,
   teaser,
+  returnTo,
 }: {
   jobs: Job[];
   totalCount: number;
@@ -328,6 +336,7 @@ function SidebarBoard({
   location: string;
   searchStacked: ReactNode;
   teaser: ReactNode;
+  returnTo: string;
 }) {
   return (
     <div className="max-w-6xl mx-auto px-6 pt-2 pb-8 grid grid-cols-[260px_minmax(0,1fr)] lg:grid-cols-[300px_minmax(0,1fr)] gap-8 items-start">
@@ -339,7 +348,7 @@ function SidebarBoard({
       </aside>
       <div>
         <ResultsSummary count={totalCount} q={q} location={location} />
-        {jobs.length === 0 ? <EmptyState /> : <RowList jobs={jobs} />}
+        {jobs.length === 0 ? <EmptyState /> : <RowList jobs={jobs} returnTo={returnTo} />}
         {teaser && (
           <LockedRows teaser={teaser} className="mt-2.5 flex flex-col gap-2.5">
             {repeat(4, (i) => <PlaceholderRow key={i} />)}
@@ -408,7 +417,7 @@ export function JobBoard({
               Latest openings
             </h2>
           )}
-          {mobileJobs.length === 0 ? <EmptyState /> : <CardList jobs={mobileJobs} />}
+          {mobileJobs.length === 0 ? <EmptyState /> : <CardList jobs={mobileJobs} returnTo={returnTo} />}
           {mobileTeaser && (
             <LockedRows
               teaser={mobileTeaser}
@@ -430,9 +439,10 @@ export function JobBoard({
             location={location}
             searchStacked={searchStacked}
             teaser={teaser}
+            returnTo={returnTo}
           />
         ) : (
-          <HeroBoard jobs={jobs} signedIn={signedIn} searchRow={searchRow} teaser={teaser} />
+          <HeroBoard jobs={jobs} signedIn={signedIn} searchRow={searchRow} teaser={teaser} returnTo={returnTo} />
         )}
       </div>
     </main>

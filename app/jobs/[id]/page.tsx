@@ -33,12 +33,27 @@ export async function generateMetadata({
   };
 }
 
+function searchReturn(from: string | undefined) {
+  if (!from || !from.startsWith("/") || from.startsWith("//") || from.includes("\\")) return "/";
+  try {
+    const url = new URL(from, "https://thegoodsort.local");
+    if (url.origin !== "https://thegoodsort.local" || url.pathname !== "/") return "/";
+    return `/${url.search}`;
+  } catch {
+    return "/";
+  }
+}
+
 export default async function JobDetail({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
+  const backHref = searchReturn(from);
   const job = await getJob(id);
 
   if (!job) {
@@ -58,11 +73,11 @@ export default async function JobDetail({
       <main className="flex-1">
         <div className="max-w-2xl mx-auto px-4 py-6 sm:py-8">
           <Link
-            href="/"
+            href={backHref}
             className="inline-flex items-center gap-1 text-sm font-medium mb-6"
             style={{ color: "var(--brand-muted)" }}
           >
-            &larr; All positions
+            &larr; Back
           </Link>
 
           <div
@@ -165,7 +180,11 @@ export default async function JobDetail({
                 {similar.map((s) => (
                   <li key={s.id}>
                     <Link
-                      href={`/jobs/${s.id}`}
+                      href={
+                        backHref === "/"
+                          ? `/jobs/${s.id}`
+                          : `/jobs/${s.id}?from=${encodeURIComponent(backHref)}`
+                      }
                       className="block rounded-2xl p-4 transition-shadow hover:shadow-md"
                       style={{
                         background: "var(--brand-card)",
