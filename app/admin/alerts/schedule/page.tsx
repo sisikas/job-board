@@ -53,7 +53,7 @@ export default async function AlertSchedulePage({
   return (
     <div className="flex-1 bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto max-w-6xl px-4 pt-6">
+        <div className="mx-auto max-w-6xl px-4 pt-6 pb-5">
           <h1 className="text-xl font-semibold text-neutral-900">Send Alerts</h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             Tick Sent when an alert has gone out. Click a date to add, edit, or delete a note.

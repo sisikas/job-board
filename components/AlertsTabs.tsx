@@ -7,7 +7,7 @@ const tabs = [
 
 export function AlertsTabs({ current }: { current: (typeof tabs)[number]["id"] }) {
   return (
-    <nav className="mt-6 flex gap-6" aria-label="Job alerts">
+    <nav className="mt-5 inline-flex rounded-xl bg-neutral-100 p-1" aria-label="Job alerts">
       {tabs.map((tab) => {
         const active = tab.id === current;
         return (
@@ -17,8 +17,8 @@ export function AlertsTabs({ current }: { current: (typeof tabs)[number]["id"] }
             aria-current={active ? "page" : undefined}
             className={
               active
-                ? "border-b-2 border-neutral-900 pb-3 text-sm font-semibold text-neutral-900"
-                : "border-b-2 border-transparent pb-3 text-sm font-medium text-neutral-500 hover:text-neutral-800"
+                ? "rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white"
+                : "rounded-lg px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-white"
             }
           >
             {tab.label}

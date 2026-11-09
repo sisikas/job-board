@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { AlertConditions } from "@/components/AlertConditions";
 import { AlertsTabs } from "@/components/AlertsTabs";
 import { isAuthed } from "@/lib/auth";
-import { LocalTime } from "@/components/LocalTime";
 import {
   alertSubject,
   formatJobPlace,
@@ -51,11 +50,6 @@ function PreferenceBlock({ person }: { person: AlertSubscriber }) {
   );
 }
 
-function LastSent({ person }: { person: AlertSubscriber }) {
-  if (!person.lastSentAt) return <span className="text-neutral-500">Never</span>;
-  return <LocalTime iso={person.lastSentAt.toISOString()} />;
-}
-
 function JobList({ jobs }: { jobs: AlertJob[] }) {
   return (
     <ul className="space-y-2">
@@ -91,7 +85,7 @@ export default async function AlertsPage({
   return (
     <div className="flex-1 bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 pt-6">
+        <div className="max-w-6xl mx-auto px-4 pt-6 pb-5">
           <h1 className="text-xl font-semibold text-neutral-900">Send Alerts</h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             Who would get an email if you sent now, and which jobs would be in it.
@@ -160,9 +154,6 @@ export default async function AlertsPage({
                     <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
                       {person.email}
                     </a>
-                    <span className="text-neutral-500">
-                      Last emailed <LastSent person={person} />
-                    </span>
                   </div>
                   <p className="mt-2 text-neutral-800">
                     Subject: {alertSubject(person.jobs.length)}
@@ -210,9 +201,6 @@ export default async function AlertsPage({
                     <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
                       {person.email}
                     </a>
-                    <span className="text-neutral-500">
-                      Last emailed <LastSent person={person} />
-                    </span>
                   </div>
                   <div className="mt-3">
                     <PreferenceBlock person={person} />
