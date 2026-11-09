@@ -148,6 +148,16 @@ export async function createJobRequest(input: JobRequestInput): Promise<JobReque
   return rowToRequest(rows[0]);
 }
 
+export async function deleteJobRequest(id: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
+  await ensureTable();
+  const sql = getSql();
+  const rows = await sql<{ id: string }[]>`
+    DELETE FROM job_requests WHERE id = ${id} RETURNING id
+  `;
+  return rows.length > 0;
+}
+
 export async function listJobRequests(): Promise<JobRequest[]> {
   await ensureTable();
   const sql = getSql();

@@ -146,7 +146,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
                     openAuth("/", "signup");
                   }}
                 >
-                  Sign up
+                  Free Sign up
                   <Chevron />
                 </button>
                 <button
