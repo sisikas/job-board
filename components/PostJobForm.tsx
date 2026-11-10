@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 const field =
   "w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2";
 const fieldStyle = { borderColor: "#e4d7b4", color: "#231F17" };
-const STRIPE_PAYMENT_URL = "https://buy.stripe.com/test_cNi4gsbK9axX2qUclk3wQ00";
+const STRIPE_PAYMENT_URL = "https://buy.stripe.com/cNi4gsbK9axX2qUclk3wQ00";
 
 function Label({ children }: { children: string }) {
   return (
