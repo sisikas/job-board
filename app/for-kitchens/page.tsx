@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 export const metadata: Metadata = {
   title: "For kitchens — The Good Sort",
   description:
-    "Your job goes straight to professionals who follow The Good Sort and live for good food. One flat price, no agency cut.",
+    "I hand-pick every job on The Good Sort, which is why 9,000+ chefs and cooks trust what I send them. One flat price, no agency cut.",
 };
 
 function Tick() {
@@ -163,27 +163,40 @@ export default function ForKitchensPage() {
               For kitchens
             </p>
             <h1 className="max-w-[9.4em] text-[clamp(40px,4.8vw,56px)] leading-[1.02] font-bold tracking-[-0.02em]">
-              We’re fussy about kitchens. Chefs love us for it.
+              Hi, I’m Kate. I’m fussy about kitchens.
             </h1>
-            <p className="max-w-[460px] text-[17px] leading-relaxed" style={{ color: "#5C5140" }}>
-              Your job goes straight to professionals who follow The Good Sort and live for good
-              food. In their inbox, on our Instagram, and on the site. One flat price, no agency
-              cut.
-            </p>
-            <div className="mt-2 flex flex-wrap gap-3">
+            <div className="flex max-w-[460px] flex-col gap-2.5 text-[17px] leading-snug" style={{ color: "#5C5140" }}>
+              <p>I hand-pick every job on The Good Sort.</p>
+              <p style={{ color: "#231F17" }}>
+                <span className="font-bold" style={{ color: "#4E6B1F" }}>
+                  9,000+ chefs and cooks
+                </span>{" "}
+                trust what I send them.
+              </p>
+              <p>It lands in their inbox, on my Instagram, and on the site.</p>
+              <p>One flat price, no agency cut.</p>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
               <Link
                 href="/post-a-job"
-                className="rounded-full px-6 py-3.5 text-[16px] font-bold text-white"
+                className="inline-flex items-baseline gap-2 rounded-full px-6 py-3.5 text-[16px] font-bold text-white"
                 style={{ background: "#4E6B1F" }}
               >
-                Post a job · £39
+                <span>Post a job</span>
+                <span
+                  className="text-[20px] font-bold line-through decoration-[3px]"
+                  style={{ color: "#fff", textDecorationColor: "#F6E8BB" }}
+                >
+                  £79
+                </span>
+                <span className="text-[20px]">£39</span>
               </Link>
               <a
-                href="#featured"
+                href="#how"
                 className="rounded-full border-2 bg-transparent px-6 py-3 text-[16px] font-bold"
                 style={{ borderColor: "#4E6B1F", color: "#4E6B1F" }}
               >
-                See where it goes
+                How it works
               </a>
             </div>
           </div>
@@ -209,9 +222,19 @@ export default function ForKitchensPage() {
                 One flat price, no hidden costs
               </p>
               <p className="mt-2 flex items-baseline gap-2">
-                <span className="text-[28px] leading-none font-bold">£39</span>
-                <span className="text-[17px]">per job</span>
+                <span className="text-[18px] font-semibold line-through decoration-2" style={{ color: "#F6E8BB" }}>
+                  £79
+                </span>
+                <span className="text-[32px] leading-none font-bold tracking-[-0.02em]">£39</span>
+                <span className="text-[16px]">flat rate</span>
               </p>
+              <Link
+                href="/post-a-job"
+                className="mt-5 inline-flex rounded-full px-6 py-3 text-[16px] font-bold text-white"
+                style={{ background: "var(--brand-brick)" }}
+              >
+                Post
+              </Link>
             </div>
           </aside>
         </section>
@@ -235,7 +258,7 @@ export default function ForKitchensPage() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-5">
+        <section id="how" className="flex scroll-mt-6 flex-col gap-5">
           <h2 className="text-[32px] font-bold">How it works</h2>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {steps.map((step, index) => (
