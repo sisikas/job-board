@@ -173,8 +173,7 @@ export default function ForKitchensPage() {
                 </span>{" "}
                 trust what I send them.
               </p>
-              <p>It lands in their inbox, on my Instagram, and on the site.</p>
-              <p>One flat price, no agency cut.</p>
+              <p>It lands in their inbox, on my Instagram, and on the site. One flat price, no agency cut.</p>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <Link
