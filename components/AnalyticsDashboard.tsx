@@ -121,7 +121,7 @@ export function AnalyticsDashboard() {
   const [end, setEnd] = useState(initial.end);
   const [preset, setPreset] = useState<number | "24h" | null>(7);
   const [excludeGreece, setExcludeGreece] = useState(false);
-  const [tab, setTab] = useState<"visitors" | "users">("visitors");
+  const [tab, setTab] = useState<"visitors" | "users" | "businesses">("visitors");
   const [load, setLoad] = useState<Load>({ status: "loading" });
 
   useEffect(() => {
@@ -179,6 +179,7 @@ export function AnalyticsDashboard() {
           [
             ["visitors", "Visitors"],
             ["users", "Users"],
+            ["businesses", "Businesses"],
           ] as const
         ).map(([id, label]) => {
           const selected = tab === id;
@@ -311,8 +312,10 @@ export function AnalyticsDashboard() {
       {load.status === "ready" &&
         (tab === "visitors" ? (
           <VisitorsView report={load.report} />
-        ) : (
+        ) : tab === "users" ? (
           <UsersView report={load.report} />
+        ) : (
+          <BusinessesView report={load.report} />
         ))}
     </div>
   );
@@ -395,6 +398,40 @@ function UsersView({ report }: { report: AnalyticsReport }) {
           empty="Nobody signed up in these dates."
         />
       )}
+    </>
+  );
+}
+
+function BusinessesView({ report }: { report: AnalyticsReport }) {
+  const businesses = report.businesses;
+  return (
+    <>
+      <p className="text-sm" style={{ color: PINK_MUTED }}>
+        People who opened the hiring page. Clicked Post a job means they then opened the form.
+        Scrolled means they reached the bottom. Left almost immediately means that visit did
+        nothing else.
+      </p>
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Visited the hiring page" value={String(businesses.visitors)} />
+        <CountCard
+          label="Clicked Post a job"
+          stat={businesses.clicked}
+          whole={businesses.visitors}
+          wholeLabel="visitors"
+        />
+        <CountCard
+          label="Scrolled"
+          stat={businesses.scrolled}
+          whole={businesses.visitors}
+          wholeLabel="visitors"
+        />
+        <CountCard
+          label="Left almost immediately"
+          stat={businesses.bounced}
+          whole={businesses.visits}
+          wholeLabel="visits"
+        />
+      </section>
     </>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ComponentProps } from "react";
 import { usePathname } from "next/navigation";
-import { loadGoogleAnalytics, trackGaEvent, trackPageView } from "@/lib/google-analytics";
+import { loadGoogleAnalytics, trackGaEvent, trackPageView, trackScrollEnd } from "@/lib/google-analytics";
 
 export function GoogleAnalytics() {
   const pathname = usePathname();
@@ -18,7 +18,7 @@ export function GoogleAnalytics() {
       if (doc.scrollHeight <= window.innerHeight + 40) return;
       if (window.scrollY + window.innerHeight < doc.scrollHeight - 40) return;
       fired = true;
-      trackGaEvent("scroll_end");
+      trackScrollEnd();
       window.removeEventListener("scroll", onScroll);
     };
     window.addEventListener("scroll", onScroll, { passive: true });

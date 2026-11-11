@@ -51,6 +51,14 @@ export type AnalyticsReport = {
     trend: TrendPoint[];
     trendError?: string;
   };
+  businesses: {
+    visitors: number;
+    visits: number;
+    clicked: CountStat;
+    scrolled: CountStat;
+    bounced: CountStat;
+    error?: string;
+  };
 };
 
 type GaRow = {
@@ -273,11 +281,40 @@ function combineFilters(...filters: (Record<string, unknown> | undefined)[]) {
   return { andGroup: { expressions: present } };
 }
 
+type FunnelEvent = string | { event: string; page: string };
+
+function funnelStep(step: FunnelEvent) {
+  const eventName = typeof step === "string" ? step : step.event;
+  const page = typeof step === "string" ? "" : step.page;
+  return {
+    name: page || eventName,
+    filterExpression: {
+      funnelEventFilter: {
+        eventName,
+        ...(page
+          ? {
+              funnelParameterFilterExpression: {
+                funnelParameterFilter: {
+                  eventParameterName: "page_location",
+                  stringFilter: {
+                    matchType: "ENDS_WITH",
+                    value: page,
+                    caseSensitive: false,
+                  },
+                },
+              },
+            }
+          : {}),
+      },
+    },
+  };
+}
+
 async function runFunnel(
   propertyId: string,
   token: string,
   dateRanges: { startDate: string; endDate: string }[],
-  events: string[],
+  events: FunnelEvent[],
   dimensionFilter?: Record<string, unknown>,
   breakdown?: string
 ) {
@@ -296,10 +333,7 @@ async function runFunnel(
           ? { funnelBreakdown: { breakdownDimension: { name: breakdown }, limit: 8 } }
           : {}),
         funnel: {
-          steps: events.map((eventName) => ({
-            name: eventName,
-            filterExpression: { funnelEventFilter: { eventName } },
-          })),
+          steps: events.map(funnelStep),
         },
       }),
       cache: "no-store",
@@ -346,6 +380,20 @@ function dimensionValue(report: GaReport | undefined, row: GaRow, name: string) 
 function percent(part: number, whole: number) {
   if (!whole || !part) return 0;
   return Math.round((part / whole) * 100);
+}
+
+function rateOf(value: number) {
+  if (!value) return 0;
+  return value <= 1 ? value : value / 100;
+}
+
+function pagePath(path: string) {
+  return {
+    filter: {
+      fieldName: "pagePath",
+      stringFilter: { matchType: "EXACT", value: path, caseSensitive: false },
+    },
+  };
 }
 
 function asError(error: unknown, fallback: string) {
@@ -615,6 +663,40 @@ export async function getAnalyticsReport(
       users: buildTrend(userTrend, trendDimension, trendBuckets, trendWithYear),
     }))
     .catch((error: unknown) => asError(error, "The line could not be loaded."));
+  const hiringVisits = runReports(creds.propertyId, token, [
+    {
+      dateRanges,
+      metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "bounceRate" }],
+      dimensionFilter: combineFilters(pagePath("/for-kitchens"), countryFilter, hourFilter),
+    },
+    {
+      dateRanges,
+      metrics: [{ name: "activeUsers" }],
+      dimensionFilter: combineFilters(
+        {
+          filter: {
+            fieldName: "eventName",
+            stringFilter: { matchType: "EXACT", value: "scroll_end" },
+          },
+        },
+        pagePath("/for-kitchens"),
+        countryFilter,
+        hourFilter
+      ),
+    },
+  ]).catch((error: unknown) => asError(error, "The hiring page numbers could not be loaded."));
+  const hiringClicks = runFunnel(
+    creds.propertyId,
+    token,
+    dateRanges,
+    [
+      { event: "page_view", page: "/for-kitchens" },
+      { event: "page_view", page: "/post-a-job" },
+    ],
+    visitorFilter
+  )
+    .then((table) => funnelStepUsers(table, 2))
+    .catch((error: unknown) => asError(error, "Post a job clicks could not be loaded."));
 
   const [overview, events, sources, countries] = await main;
   const returns = await returnsReport;
@@ -640,6 +722,18 @@ export async function getAnalyticsReport(
       ? 0
       : Math.min(userCount, searchedAfter.searched);
   const trendFailed = trend instanceof Error;
+  const hiring = await hiringVisits;
+  const clicked = await hiringClicks;
+  const hiringFailed = hiring instanceof Error;
+  const hiringRow = hiringFailed ? undefined : hiring[0]?.rows?.[0];
+  const hiringReport = hiringFailed ? undefined : hiring[0];
+  const scrollReport = hiringFailed ? undefined : hiring[1];
+  const hiringVisitors = metricValue(hiringReport, hiringRow, "activeUsers");
+  const hiringSessions = metricValue(hiringReport, hiringRow, "sessions");
+  const bounceRate = rateOf(metricValue(hiringReport, hiringRow, "bounceRate"));
+  const bouncedVisits = Math.round(hiringSessions * bounceRate);
+  const scrolledUsers = metricValue(scrollReport, scrollReport?.rows?.[0], "activeUsers");
+  const clickedUsers = clicked instanceof Error ? 0 : Math.min(hiringVisitors || clicked, clicked);
   return {
     start,
     end,
@@ -687,6 +781,26 @@ export async function getAnalyticsReport(
             : undefined,
       trend: trendFailed ? [] : trend.users,
       trendError: trendFailed ? trend.message : undefined,
+    },
+    businesses: {
+      visitors: hiringVisitors,
+      visits: hiringSessions,
+      clicked: {
+        users: clickedUsers,
+        percent: clicked instanceof Error ? 0 : percent(clickedUsers, hiringVisitors),
+        error: clicked instanceof Error ? clicked.message : undefined,
+      },
+      scrolled: {
+        users: scrolledUsers,
+        percent: hiringFailed ? 0 : percent(scrolledUsers, hiringVisitors),
+        error: hiringFailed ? hiring.message : undefined,
+      },
+      bounced: {
+        users: bouncedVisits,
+        percent: hiringFailed ? 0 : percent(bouncedVisits, hiringSessions),
+        error: hiringFailed ? hiring.message : undefined,
+      },
+      error: hiringFailed ? hiring.message : undefined,
     },
   };
 }

@@ -72,6 +72,13 @@ export function trackGaEvent(name: string, params?: Record<string, string>) {
   fn("event", name, params);
 }
 
+export function trackScrollEnd() {
+  trackGaEvent("scroll_end", {
+    page_path: location.pathname,
+    page_location: publicUrl(location.href),
+  });
+}
+
 export function trackPageView(path: string) {
   if (lastPage === path) return;
   lastPage = path;
