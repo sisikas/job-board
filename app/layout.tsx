@@ -3,6 +3,7 @@ import Script from "next/script";
 import { AuthModal } from "@/components/AuthModal";
 import { CookieNotice } from "@/components/CookieNotice";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
+import { EXCLUDE_ANALYTICS_KEY } from "@/lib/google-analytics";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,15 +43,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </body>
       <Script id="microsoft-clarity" strategy="afterInteractive">
         {`
-          (function(c,l,a,r,i,t,y){
-            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-          })(window, document, "clarity", "script", "y5tss9t4xg");
           try {
-            if (localStorage.getItem("tgs_cookie_consent") === "granted") {
-              window.clarity("consentv2", { ad_Storage: "granted", analytics_Storage: "granted" });
-              window.clarity("consent", true);
+            if (localStorage.getItem(${JSON.stringify(EXCLUDE_ANALYTICS_KEY)}) === "1") {
+            } else {
+              (function(c,l,a,r,i,t,y){
+                c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+                t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+                y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+              })(window, document, "clarity", "script", "y5tss9t4xg");
+              if (localStorage.getItem("tgs_cookie_consent") === "granted") {
+                window.clarity("consentv2", { ad_Storage: "granted", analytics_Storage: "granted" });
+                window.clarity("consent", true);
+              }
             }
           } catch (e) {}
         `}

@@ -2,12 +2,19 @@
 
 import { useEffect, useRef, type ComponentProps } from "react";
 import { usePathname } from "next/navigation";
-import { loadGoogleAnalytics, trackGaEvent, trackPageView, trackScrollEnd } from "@/lib/google-analytics";
+import {
+  analyticsExcluded,
+  loadGoogleAnalytics,
+  trackGaEvent,
+  trackPageView,
+  trackScrollEnd,
+} from "@/lib/google-analytics";
 
 export function GoogleAnalytics() {
   const pathname = usePathname();
 
   useEffect(() => {
+    if (analyticsExcluded()) return;
     loadGoogleAnalytics();
     trackPageView(pathname);
 

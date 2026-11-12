@@ -11,6 +11,20 @@ let lastPage = "";
 
 const PRIVATE_PARAMS = ["q", "city", "country", "location", "token"];
 
+export const EXCLUDE_ANALYTICS_KEY = "tgs_exclude_analytics";
+
+export function analyticsExcluded() {
+  try {
+    return localStorage.getItem(EXCLUDE_ANALYTICS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function excludeThisBrowser() {
+  localStorage.setItem(EXCLUDE_ANALYTICS_KEY, "1");
+}
+
 function publicUrl(raw: string) {
   try {
     const url = new URL(raw, location.origin);
@@ -38,7 +52,7 @@ function flush() {
 }
 
 export function loadGoogleAnalytics() {
-  if (!GA_MEASUREMENT_ID || started) return;
+  if (!GA_MEASUREMENT_ID || started || analyticsExcluded()) return;
   started = true;
 
   const w = window as Window & { dataLayer?: unknown[]; gtag?: Gtag };
@@ -62,7 +76,7 @@ export function loadGoogleAnalytics() {
 }
 
 export function trackGaEvent(name: string, params?: Record<string, string>) {
-  if (!GA_MEASUREMENT_ID) return;
+  if (!GA_MEASUREMENT_ID || analyticsExcluded()) return;
   loadGoogleAnalytics();
   const fn = gtag();
   if (!fn) {
