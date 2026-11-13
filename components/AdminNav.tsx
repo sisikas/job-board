@@ -7,7 +7,7 @@ import { useEffect, useState, type ReactNode } from "react";
 const ITEMS = [
   { href: "/admin/analytics", id: "analytics", label: "Analytics" },
   { href: "/admin/signups", id: "signups", label: "Sign-ups" },
-  { href: "/admin/onboarding", id: "emails", label: "Email Subscribers" },
+  { href: "/admin/onboarding", id: "emails", label: "Email lists" },
   { href: "/admin/alerts", id: "alerts", label: "Send Alerts" },
   { href: "/admin/instagram", id: "instagram", label: "Insta schedule" },
   { href: "/admin/requests", id: "requests", label: "Ad Requests" },

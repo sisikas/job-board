@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { isAuthed } from "@/lib/auth";
 import { listOnboardingAnswers, type OnboardingAnswer } from "@/lib/users";
 import { ConfirmDelete } from "@/components/ConfirmDelete";
+import { EmailListTabs } from "@/components/EmailListTabs";
 import { LocalTime } from "@/components/LocalTime";
 
-export const metadata = { title: "Email Subscribers — Admin" };
+export const metadata = { title: "Email subscribers — Admin" };
 
 function choiceList(values: string[]) {
   return values.length > 0 ? values.join(", ") : "—";
@@ -122,11 +123,12 @@ export default async function OnboardingAdminPage() {
   return (
     <div className="flex-1 bg-neutral-50">
       <header className="border-b border-neutral-200 bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-xl font-semibold text-neutral-900">Email Subscribers</h1>
+        <div className="max-w-6xl mx-auto px-4 pt-6 pb-5">
+          <h1 className="text-xl font-semibold text-neutral-900">Email lists</h1>
           <p className="text-sm text-neutral-500 mt-0.5">
             Roles, places, and email alerts people chose after signing up.
           </p>
+          <EmailListTabs current="subscribers" />
         </div>
       </header>
 

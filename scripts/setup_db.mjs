@@ -162,6 +162,24 @@ async function main() {
   `;
   console.log("✔ Table `job_requests` is ready.");
 
+  // Keep in sync with ensureTable() in lib/email-businesses.ts.
+  await sql`
+    CREATE TABLE IF NOT EXISTS email_businesses (
+      id text PRIMARY KEY,
+      business text NOT NULL,
+      city text NOT NULL DEFAULT '',
+      email text NOT NULL,
+      status text NOT NULL DEFAULT '',
+      notes text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS email_businesses_created_idx
+    ON email_businesses (created_at DESC)
+  `;
+  console.log("✔ Table `email_businesses` is ready.");
+
   // Keep in sync with ensureTable() in lib/alert-schedule.ts.
   await sql`
     CREATE TABLE IF NOT EXISTS alert_sent_days (
