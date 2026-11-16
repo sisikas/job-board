@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies, headers } from "next/headers";
+import { FeesAnswer, KitchenPrices, NowPrice, WasPrice } from "@/components/KitchenPrices";
 import { SiteHeader } from "@/components/SiteHeader";
+import { CURRENCY_COOKIE, allLocalPrices, isPriceRegion, regionForCountry } from "@/lib/local-price";
 
 export const metadata: Metadata = {
   title: "For kitchens — The Good Sort",
@@ -137,7 +140,7 @@ const questions = [
   },
   {
     title: "Any hidden fees?",
-    body: "None. £39 is the whole bill. No add-ons, no auto-renewals, no cut of anyone’s salary. You pay by card once your job’s approved.",
+    body: "",
   },
   {
     title: "What kind of places do we list?",
@@ -149,8 +152,14 @@ const questions = [
   },
 ];
 
-export default function ForKitchensPage() {
+export default async function ForKitchensPage() {
+  const country = (await headers()).get("x-vercel-ip-country");
+  const saved = (await cookies()).get(CURRENCY_COOKIE)?.value;
+  const choices = await allLocalPrices();
+  const initial = isPriceRegion(saved) ? saved : regionForCountry(country);
+
   return (
+    <KitchenPrices choices={choices} initial={initial}>
     <div className="flex-1" style={{ background: "#F6E8BB", color: "#231F17" }}>
       <SiteHeader />
       <div className="mx-auto flex max-w-[1180px] flex-col gap-10 px-6 pt-2 pb-20">
@@ -186,9 +195,9 @@ export default function ForKitchensPage() {
                   className="text-[20px] font-bold line-through decoration-[3px]"
                   style={{ color: "#fff", textDecorationColor: "#F6E8BB" }}
                 >
-                  £79
+                  <WasPrice />
                 </span>
-                <span className="text-[20px]">£39</span>
+                <span className="text-[20px]"><NowPrice /></span>
               </Link>
               <a
                 href="#how"
@@ -222,9 +231,9 @@ export default function ForKitchensPage() {
               </p>
               <p className="mt-2 flex items-baseline gap-2">
                 <span className="text-[18px] font-semibold line-through decoration-2" style={{ color: "#F6E8BB" }}>
-                  £79
+                  <WasPrice />
                 </span>
-                <span className="text-[32px] leading-none font-bold tracking-[-0.02em]">£39</span>
+                <span className="text-[32px] leading-none font-bold tracking-[-0.02em]"><NowPrice /></span>
                 <span className="text-[16px]">flat rate</span>
               </p>
               <Link
@@ -288,7 +297,7 @@ export default function ForKitchensPage() {
               <div key={item.title}>
                 <h3 className="mb-1.5 text-lg font-semibold">{item.title}</h3>
                 <p className="leading-relaxed" style={{ color: "#5C5140" }}>
-                  {item.body}
+                  {item.title === "Any hidden fees?" ? <FeesAnswer /> : item.body}
                 </p>
               </div>
             ))}
@@ -312,5 +321,6 @@ export default function ForKitchensPage() {
         </section>
       </div>
     </div>
+    </KitchenPrices>
   );
 }

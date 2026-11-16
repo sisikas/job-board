@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/app/actions/auth";
 import { openAuth } from "@/components/AuthModal";
+import { CurrencyFlag } from "@/components/KitchenPrices";
 
 function ForKitchensLink({ className = "text-xs underline decoration-1 underline-offset-4 md:text-sm" }: { className?: string }) {
   const pathname = usePathname();
@@ -37,9 +38,12 @@ function AccountActions({ signedIn, className }: { signedIn: boolean; className:
   return (
     <div className="flex flex-wrap items-center justify-end gap-x-2.5 gap-y-2 md:gap-x-4">
       {isForKitchens(pathname) ? (
-        <Link href="/" className={className} style={filled}>
-          Find a job
-        </Link>
+        <>
+          <Link href="/" className={className} style={filled}>
+            Find a job
+          </Link>
+          <CurrencyFlag menuAlign="right" />
+        </>
       ) : signedIn ? (
         <form action={logout}>
           <button type="submit" className={className} style={filled}>
@@ -119,6 +123,11 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="The Good Sort" className="h-auto w-24" />
         </Link>
+        {forKitchens && (
+          <div className="ml-auto">
+            <CurrencyFlag menuAlign="right" />
+          </div>
+        )}
       </div>
       {open && (
         <div id="phone-menu" className="px-4 pb-4">
@@ -192,7 +201,7 @@ function MobileNav({ signedIn }: { signedIn: boolean }) {
 
 export function SiteNav({ signedIn }: { signedIn: boolean }) {
   return (
-    <header>
+    <header className="relative z-20">
       <MobileNav signedIn={signedIn} />
 
       <div className="hidden md:flex max-w-6xl mx-auto px-6 pt-10 pb-8 items-center justify-between gap-6">
