@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sendAdRequestEmail } from "@/lib/email";
 import { createJobRequest, parseJobRequest } from "@/lib/job-requests";
 
 export async function POST(req: Request) {
@@ -12,6 +13,12 @@ export async function POST(req: Request) {
     await createJobRequest(input);
   } catch {
     return NextResponse.json({ error: "That didn't send. Try again." }, { status: 500 });
+  }
+
+  try {
+    await sendAdRequestEmail(input);
+  } catch (error) {
+    console.error("Ad request notification failed", error);
   }
 
   return NextResponse.json({ ok: true }, { status: 201 });
