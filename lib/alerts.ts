@@ -273,7 +273,7 @@ export type AlertDesign = "current" | "warm";
 function noteLines(): string[] {
   return [
     "Hiya",
-    "found a role you might like.",
+    "found a role you might like!",
     "I’ll send the next one when it’s worth your time.",
     "Kate",
   ];
