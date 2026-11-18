@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 const note = [
   "Hiya",
-  "found something I think you’ll like.",
+  "found a role you might like.",
   "I’ll send the next one when it’s worth your time.",
   "Kate",
 ].join("<br>");
