@@ -83,7 +83,7 @@ export function PostJobThanks() {
         We’ll process the ad and come back to you within a day.
       </p>
       <Link
-        href="/"
+        href="/for-kitchens"
         className="mt-6 inline-block rounded-full px-6 py-3 text-[15px] font-bold text-white"
         style={{ background: "var(--brand-brick)" }}
       >
