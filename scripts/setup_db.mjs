@@ -153,8 +153,13 @@ async function main() {
       description text NOT NULL,
       about text NOT NULL,
       apply text NOT NULL,
+      notes text NOT NULL DEFAULT '',
       created_at timestamptz NOT NULL DEFAULT now()
     )
+  `;
+  await sql`
+    ALTER TABLE job_requests
+    ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT ''
   `;
   await sql`
     CREATE INDEX IF NOT EXISTS job_requests_created_idx

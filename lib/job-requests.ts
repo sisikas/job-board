@@ -17,6 +17,7 @@ export type JobRequest = {
   description: string;
   about: string;
   apply: string;
+  notes: string;
   createdAt: string;
 };
 
@@ -45,6 +46,7 @@ type JobRequestRow = {
   description: string;
   about: string;
   apply: string;
+  notes: string;
   created_at: Date | string;
 };
 
@@ -72,6 +74,10 @@ function ensureTable(): Promise<void> {
         CREATE INDEX IF NOT EXISTS job_requests_created_idx
         ON job_requests (created_at DESC)
       `;
+      await sql`
+        ALTER TABLE job_requests
+        ADD COLUMN IF NOT EXISTS notes text NOT NULL DEFAULT ''
+      `;
     })().catch((err) => {
       tableReady = undefined;
       throw err;
@@ -96,6 +102,7 @@ function rowToRequest(row: JobRequestRow): JobRequest {
     description: row.description,
     about: row.about,
     apply: row.apply,
+    notes: row.notes ?? "",
     createdAt: stamp(row.created_at),
   };
 }
@@ -143,7 +150,7 @@ export async function createJobRequest(input: JobRequestInput): Promise<JobReque
       ${id}, ${input.email}, ${input.business}, ${input.role}, ${input.city},
       ${input.pay}, ${input.description}, ${input.about}, ${input.apply}
     )
-    RETURNING id, email, business, role, city, pay, description, about, apply, created_at
+    RETURNING id, email, business, role, city, pay, description, about, apply, notes, created_at
   `;
   return rowToRequest(rows[0]);
 }
@@ -158,11 +165,21 @@ export async function deleteJobRequest(id: string): Promise<boolean> {
   return rows.length > 0;
 }
 
+export async function updateJobRequestNotes(id: string, notes: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(id) || notes.length > LONG_MAX) return false;
+  await ensureTable();
+  const sql = getSql();
+  const rows = await sql<{ id: string }[]>`
+    UPDATE job_requests SET notes = ${notes} WHERE id = ${id} RETURNING id
+  `;
+  return rows.length > 0;
+}
+
 export async function listJobRequests(): Promise<JobRequest[]> {
   await ensureTable();
   const sql = getSql();
   const rows = await sql<JobRequestRow[]>`
-    SELECT id, email, business, role, city, pay, description, about, apply, created_at
+    SELECT id, email, business, role, city, pay, description, about, apply, notes, created_at
     FROM job_requests
     ORDER BY created_at DESC
   `;

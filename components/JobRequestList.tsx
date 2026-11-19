@@ -2,14 +2,24 @@
 
 import { useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { deleteJobRequestAction } from "@/app/actions/admin-requests";
+import { deleteJobRequestAction, saveJobRequestNotesAction } from "@/app/actions/admin-requests";
 import { LocalTime } from "@/components/LocalTime";
 import type { JobRequest } from "@/lib/job-requests";
 
 function matches(request: JobRequest, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [request.business, request.role, request.city, request.email, request.pay, request.description, request.about, request.apply]
+  return [
+    request.business,
+    request.role,
+    request.city,
+    request.email,
+    request.pay,
+    request.description,
+    request.about,
+    request.apply,
+    request.notes,
+  ]
     .join("\n")
     .toLowerCase()
     .includes(q);
@@ -91,12 +101,36 @@ function DeleteRequest({ id, business }: { id: string; business: string }) {
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, href }: { label: string; value: string; href?: string }) {
+  const text = value.trim();
   return (
     <div className="mt-3">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</h3>
-      <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-800">{value}</p>
+      {text ? (
+        href ? (
+          <a href={href} className="mt-1 inline-block text-sm text-neutral-900 underline">
+            {text}
+          </a>
+        ) : (
+          <p className="mt-1 whitespace-pre-wrap text-sm text-neutral-800">{text}</p>
+        )
+      ) : (
+        <p className="mt-1 text-sm text-neutral-400">—</p>
+      )}
     </div>
+  );
+}
+
+function SaveNotesButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-60"
+    >
+      {pending ? "Saving…" : "Save notes"}
+    </button>
   );
 }
 
@@ -140,22 +174,35 @@ export function JobRequestList({ requests }: { requests: JobRequest[] }) {
         <ul className="space-y-4">
           {visible.map((request) => (
             <li key={request.id} className="rounded-xl border border-neutral-200 bg-white px-4 py-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-base font-semibold text-neutral-900">{request.business}</h2>
-                <span className="text-sm text-neutral-500">
-                  <LocalTime iso={request.createdAt} />
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-neutral-700">
-                {request.role} · {request.city}
-                {request.pay ? ` · ${request.pay}` : ""}
+              <p className="text-right text-sm text-neutral-500">
+                <LocalTime iso={request.createdAt} />
               </p>
-              <a href={`mailto:${request.email}`} className="mt-1 inline-block text-sm text-neutral-900 underline">
-                {request.email}
-              </a>
+              <Field label="Restaurant or business" value={request.business} />
+              <Field label="Role" value={request.role} />
+              <Field label="City" value={request.city} />
+              <Field label="Your email" value={request.email} href={`mailto:${request.email}`} />
+              <Field label="Pay (optional)" value={request.pay} />
               <Field label="Job description" value={request.description} />
-              <Field label="What's it actually like?" value={request.about} />
+              <Field label="What’s it actually like? (optional)" value={request.about} />
               <Field label="How should chefs apply?" value={request.apply} />
+              <form action={saveJobRequestNotesAction} className="mt-4 border-t border-neutral-200 pt-4">
+                <input type="hidden" name="id" value={request.id} />
+                <label className="block">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Notes</span>
+                  <span className="mt-0.5 block text-xs text-neutral-400">Only you see this.</span>
+                  <textarea
+                    name="notes"
+                    rows={3}
+                    maxLength={5000}
+                    defaultValue={request.notes}
+                    placeholder="Add a note for yourself"
+                    className="mt-2 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 focus:border-neutral-400 focus:outline-none"
+                  />
+                </label>
+                <div className="mt-2">
+                  <SaveNotesButton />
+                </div>
+              </form>
               <div className="mt-4">
                 <DeleteRequest id={request.id} business={request.business} />
               </div>
