@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
+import { InstagramLink } from "@/components/InstagramLink";
 import { FeesAnswer, KitchenPrices, NowPrice, WasPrice } from "@/components/KitchenPrices";
 import { SiteHeader } from "@/components/SiteHeader";
 import { CURRENCY_COOKIE, allLocalPrices, isPriceRegion, regionForCountry } from "@/lib/local-price";
@@ -320,6 +321,32 @@ export default async function ForKitchensPage() {
           </Link>
         </section>
       </div>
+      <footer>
+        <div
+          className="mx-auto max-w-3xl px-4 py-6 text-center text-xs"
+          style={{ color: "var(--brand-logo-green)" }}
+        >
+          <div className="mb-3 flex justify-center">
+            <InstagramLink
+              href="https://www.instagram.com/the.goodsort/"
+              venueName="The Good Sort"
+              color="var(--brand-logo-green)"
+            />
+          </div>
+          <p className="mt-3">
+            <Link href="/privacy" className="underline underline-offset-2">
+              Privacy policy
+            </Link>
+            {" · "}
+            <Link href="/terms" className="underline underline-offset-2">
+              Terms of service
+            </Link>
+          </p>
+          <p className="mt-3">
+            The Good Sort is run by STUBBORN PANDA LTD, a company registered in England and Wales.
+          </p>
+        </div>
+      </footer>
     </div>
     </KitchenPrices>
   );

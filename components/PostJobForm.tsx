@@ -136,10 +136,14 @@ export function PostJobForm() {
         />
       </label>
 
+      <p className="mt-5 text-sm font-bold leading-snug" style={{ color: "#4E6B1F" }}>
+        Total £39, no hidden costs. You’ll be directed to payment on the next page.
+      </p>
+
       <button
         type="submit"
         disabled={status === "sending"}
-        className="mt-5 w-full rounded-full py-3.5 text-[15px] font-bold text-white disabled:opacity-60"
+        className="mt-4 w-full rounded-full py-3.5 text-[15px] font-bold text-white disabled:opacity-60"
         style={{ background: "#4E6B1F" }}
       >
         {status === "sending" ? "Sending…" : "Next"}
