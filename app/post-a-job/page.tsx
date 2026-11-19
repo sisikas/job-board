@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 };
 
 const MONTHLY = "mailto:thegoodsort.jobs@gmail.com?subject=Monthly%20plan";
+const STRIPE_PAYMENT_URL = "https://buy.stripe.com/cNi4gsbK9axX2qUclk3wQ00";
 
 export default function PostJobPage() {
   return (
@@ -34,12 +35,24 @@ export default function PostJobPage() {
               <li>Real kitchens only, no agencies</li>
             </ul>
           </div>
-          <p className="px-1 text-sm leading-relaxed" style={{ color: "#5C5140" }}>
-            Hiring across a few sites?{" "}
-            <a href={MONTHLY} className="font-semibold underline underline-offset-2" style={{ color: "#4E6B1F" }}>
-              Ask about a monthly plan.
-            </a>
-          </p>
+          <div className="flex flex-col gap-3 px-1 text-sm leading-relaxed" style={{ color: "#5C5140" }}>
+            <p>
+              Hiring across a few sites?{" "}
+              <a href={MONTHLY} className="font-semibold underline underline-offset-2" style={{ color: "#4E6B1F" }}>
+                Ask about a monthly plan.
+              </a>
+            </p>
+            <p>
+              Already talked with us?{" "}
+              <a
+                href={STRIPE_PAYMENT_URL}
+                className="font-semibold underline underline-offset-2"
+                style={{ color: "#4E6B1F" }}
+              >
+                Here’s the last step.
+              </a>
+            </p>
+          </div>
         </aside>
       </div>
     </div>
