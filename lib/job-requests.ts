@@ -124,9 +124,9 @@ export function parseJobRequest(body: unknown): JobRequestInput | null {
   const city = requiredText(record.city, SHORT_MAX);
   const pay = optionalText(record.pay, SHORT_MAX);
   const description = requiredText(record.description, LONG_MAX);
-  const about = requiredText(record.about, LONG_MAX);
+  const about = optionalText(record.about, LONG_MAX);
   const apply = requiredText(record.apply, SHORT_MAX);
-  if (!email || !EMAIL_RE.test(email) || !business || !role || !city || pay == null || !description || !about || !apply) {
+  if (!email || !EMAIL_RE.test(email) || !business || !role || !city || pay == null || !description || about == null || !apply) {
     return null;
   }
   return { email, business, role, city, pay, description, about, apply };

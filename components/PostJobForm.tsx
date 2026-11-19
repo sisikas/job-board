@@ -1,15 +1,23 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 
 const field =
   "w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm outline-none focus:ring-2";
 const fieldStyle = { borderColor: "#e4d7b4", color: "#231F17" };
 const STRIPE_PAYMENT_URL = "https://buy.stripe.com/cNi4gsbK9axX2qUclk3wQ00";
 
-function Label({ children }: { children: string }) {
+function Label({ children }: { children: ReactNode }) {
   return (
     <span className="mb-1.5 block text-sm font-semibold" style={{ color: "#231F17" }}>
+      {children}
+    </span>
+  );
+}
+
+function Aside({ children }: { children: string }) {
+  return (
+    <span className="font-normal" style={{ color: "#8a8478" }}>
       {children}
     </span>
   );
@@ -85,9 +93,11 @@ export function PostJobForm() {
         />
       </label>
 
-      <label className="mt-4 block max-w-xs">
-        <Label>Pay (optional)</Label>
-        <input name="pay" placeholder="e.g. £34k + tips, or £15/hr" className={field} style={fieldStyle} />
+      <label className="mt-4 block">
+        <Label>
+          Pay <Aside>(optional - roles with pay listed get more applications)</Aside>
+        </Label>
+        <input name="pay" placeholder="e.g. £34k + tips, or £15/hr" className={field + " max-w-xs"} style={fieldStyle} />
       </label>
 
       <label className="mt-4 block">
@@ -96,17 +106,18 @@ export function PostJobForm() {
           name="description"
           required
           rows={3}
-          placeholder="The day-to-day of the role."
+          placeholder="Hours, days, day-to-day responsibilities and anything else you want to share"
           className={field + " resize-y"}
           style={fieldStyle}
         />
       </label>
 
       <label className="mt-4 block">
-        <Label>What&apos;s it actually like?</Label>
+        <Label>
+          What’s it actually like? <Aside>(optional)</Aside>
+        </Label>
         <textarea
           name="about"
-          required
           rows={3}
           placeholder="The working vibes, the team, the food. What you'd tell a friend."
           className={field + " resize-y"}
@@ -119,23 +130,19 @@ export function PostJobForm() {
         <input
           name="apply"
           required
-          placeholder="e.g email, link or DM"
+          placeholder="e.g email, link or DM you’d like to be contacted on"
           className={field}
           style={fieldStyle}
         />
       </label>
 
-      <p className="mt-5 text-sm font-bold leading-snug" style={{ color: "#4E6B1F" }}>
-        For just £39, no hidden costs. You&apos;ll pay by card on the next page.
-      </p>
-
       <button
         type="submit"
         disabled={status === "sending"}
-        className="mt-4 w-full rounded-full py-3.5 text-[15px] font-bold text-white disabled:opacity-60"
+        className="mt-5 w-full rounded-full py-3.5 text-[15px] font-bold text-white disabled:opacity-60"
         style={{ background: "#4E6B1F" }}
       >
-        {status === "sending" ? "Sending…" : "Send"}
+        {status === "sending" ? "Sending…" : "Next"}
       </button>
       {status === "error" && (
         <p className="mt-3 text-center text-sm" style={{ color: "#8a3b2a" }}>
