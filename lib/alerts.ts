@@ -30,6 +30,8 @@ export type AlertJob = {
   postedAt: string;
   adminDate: string;
   description: string;
+  /** True when this person was already marked sent for this exact role. */
+  alreadySent?: boolean;
 };
 
 export type AlertSubscriber = {
@@ -47,6 +49,8 @@ export type AlertSubscriber = {
 export type AlertPreview = {
   since: string | null;
   recipients: AlertSubscriber[];
+  /** Matched this search, and every role in it was already marked sent. */
+  alreadyAlerted: AlertSubscriber[];
   unmatchedSubscribers: AlertSubscriber[];
   quietJobs: AlertJob[];
   jobCount: number;
@@ -68,6 +72,7 @@ type MatchRow = {
   posted_at: string;
   admin_date: string;
   description: string | null;
+  already_sent: boolean;
 };
 
 type JobRow = {
@@ -128,6 +133,7 @@ function jobFromRow(row: JobRow): AlertJob {
     postedAt: row.posted_at,
     adminDate: row.admin_date,
     description: row.description ?? "",
+    alreadySent: false,
   };
 }
 
@@ -479,7 +485,11 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
         j.country,
         j.posted_at,
         j.admin_date,
-        j.description
+        j.description,
+        EXISTS (
+          SELECT 1 FROM alert_sent_jobs sent
+          WHERE sent.user_id = u.id AND sent.job_id = j.id
+        ) AS already_sent
       FROM jobs j
       JOIN users u
         ON u.email_alerts = true
@@ -522,10 +532,6 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
         AND ${adminCutoff}
         AND u.onboarded_at IS NOT NULL
         AND j.admin_date >= to_char(u.onboarded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
-        AND NOT EXISTS (
-          SELECT 1 FROM alert_sent_jobs sent
-          WHERE sent.user_id = u.id AND sent.job_id = j.id
-        )
       ORDER BY u.email ASC, j.admin_date DESC, j.role ASC
     `,
     sql<JobRow[]>`
@@ -592,7 +598,7 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       };
       people.set(row.user_id, person);
     }
-    const job = jobsById.get(row.job_id) ?? jobFromRow({
+    const base = jobsById.get(row.job_id) ?? jobFromRow({
       id: row.job_id,
       role: row.job_role,
       venue: row.venue,
@@ -602,20 +608,26 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       admin_date: row.admin_date,
       description: row.description,
     });
+    const job = { ...base, alreadySent: Boolean(row.already_sent) };
     if (!person.jobs.some((existing) => existing.id === job.id)) person.jobs.push(job);
-    matchedJobIds.add(job.id);
+    if (!job.alreadySent) matchedJobIds.add(job.id);
   }
 
   const subscribers = [...people.values()];
   for (const person of subscribers) {
     person.unmatchedPreferences = unmatchedPreferences(person, jobs, sentByUser.get(person.id) ?? new Set());
-    person.jobs.sort((a, b) => b.adminDate.localeCompare(a.adminDate) || a.role.localeCompare(b.role));
+    person.jobs.sort((a, b) => {
+      if (Boolean(a.alreadySent) !== Boolean(b.alreadySent)) return a.alreadySent ? 1 : -1;
+      return b.adminDate.localeCompare(a.adminDate) || a.role.localeCompare(b.role);
+    });
   }
   subscribers.sort((a, b) => a.email.localeCompare(b.email));
 
+  const hasNewJob = (person: AlertSubscriber) => person.jobs.some((job) => !job.alreadySent);
   return {
     since,
-    recipients: subscribers.filter((person) => person.jobs.length > 0),
+    recipients: subscribers.filter(hasNewJob),
+    alreadyAlerted: subscribers.filter((person) => person.jobs.length > 0 && !hasNewJob(person)),
     unmatchedSubscribers: subscribers.filter((person) => person.jobs.length === 0),
     quietJobs: jobs.filter((job) => !matchedJobIds.has(job.id)),
     jobCount: jobs.length,

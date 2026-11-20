@@ -32,12 +32,17 @@ export default async function AlertPreviewPage({
   const query = await searchParams;
   const since = parseAlertSince(query.since);
   const preview = await getAlertPreview(since);
-  const found = [...preview.recipients, ...preview.unmatchedSubscribers].find(
+  const found = [...preview.recipients, ...preview.alreadyAlerted, ...preview.unmatchedSubscribers].find(
     (subscriber) => subscriber.id === userId
   );
   const picked = selectedJobIds(query.jobs);
   const person = found
-    ? { ...found, jobs: picked ? found.jobs.filter((job) => picked.has(job.id)) : found.jobs }
+    ? {
+        ...found,
+        jobs: picked
+          ? found.jobs.filter((job) => picked.has(job.id))
+          : found.jobs.filter((job) => !job.alreadySent),
+      }
     : null;
   const back = since ? `/admin/alerts?since=${encodeURIComponent(since)}` : "/admin/alerts";
   const unsubscribeToken =
@@ -100,9 +105,14 @@ export default async function AlertPreviewPage({
               </section>
             ))}
             <div className="mt-6 rounded-xl border border-neutral-200 bg-white px-4 py-4">
+              {person?.lastSentAt && (
+                <p className="mb-3 inline-flex rounded-full bg-red-600 px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-white">
+                  Already alerted · {formatDate(utcDay(person.lastSentAt))}
+                </p>
+              )}
               <p className="text-sm text-neutral-600">
                 {person?.lastSentAt
-                  ? `Last emailed ${formatDate(utcDay(person.lastSentAt))}.`
+                  ? "This email has the new roles only. Roles already alerted were left out."
                   : "Not emailed yet."}{" "}
                 After you send this yourself, mark the roles in this email as sent. Anything left out stays for next time. This does not send the email.
               </p>

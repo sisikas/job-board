@@ -10,12 +10,14 @@ type SendJob = {
   venue: string;
   place: string;
   adminLabel: string;
+  alreadySent: boolean;
 };
 
 type SendPerson = {
   id: string;
   email: string;
   lastEmailed: string;
+  alertedOn: string | null;
   canClear: boolean;
   roles: string[];
   locations: string[];
@@ -31,8 +33,18 @@ function subject(count: number) {
   return count === 1 ? "1 new job for you" : `${count} new jobs for you`;
 }
 
+function leftOutAtStart(people: SendPerson[]) {
+  const left = new Set<string>();
+  for (const person of people) {
+    for (const job of person.jobs) {
+      if (job.alreadySent) left.add(pairKey(person.id, job.id));
+    }
+  }
+  return left;
+}
+
 export function AlertSendList({ people, since }: { people: SendPerson[]; since: string | null }) {
-  const [leftOut, setLeftOut] = useState<Set<string>>(new Set());
+  const [leftOut, setLeftOut] = useState<Set<string>>(() => leftOutAtStart(people));
 
   function included(person: SendPerson) {
     return person.jobs.filter((job) => !leftOut.has(pairKey(person.id, job.id)));
@@ -55,8 +67,8 @@ export function AlertSendList({ people, since }: { people: SendPerson[]; since: 
   return (
     <div className="border-t border-neutral-100 bg-neutral-50 p-4">
       <p className="mb-3 max-w-2xl text-sm text-neutral-600">
-        Every role starts ticked. Untick a role you are leaving out of the email. Only ticked roles
-        are marked sent, and the preview email matches that tick.
+        Red means already alerted. Those roles start unticked, so leave them out. Green New roles are
+        the ones to send. The preview email matches the ticks.
       </p>
       <MarkAlertsSent
         pairs={allPairs}
@@ -66,13 +78,23 @@ export function AlertSendList({ people, since }: { people: SendPerson[]; since: 
       <ul className="mt-4 space-y-3">
         {people.map((person) => {
           const jobs = included(person);
+          const already = person.jobs.filter((job) => job.alreadySent).length;
+          const alerted = Boolean(person.alertedOn) || already > 0;
           const params = new URLSearchParams();
           if (since) params.set("since", since);
           if (jobs.length !== person.jobs.length) params.set("jobs", jobs.map((job) => job.id).join(","));
           const query = params.toString();
           const previewHref = query ? `/admin/alerts/${person.id}?${query}` : `/admin/alerts/${person.id}`;
           return (
-            <li key={person.id} className="rounded-xl border border-neutral-200 bg-white p-4 text-sm">
+            <li
+              key={person.id}
+              className={`rounded-xl border bg-white p-4 text-sm ${alerted ? "border-red-500" : "border-neutral-200"}`}
+            >
+              {alerted && (
+                <p className="mb-3 inline-flex rounded-full bg-red-600 px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-white">
+                  Already alerted{person.alertedOn ? ` · ${person.alertedOn}` : ""}
+                </p>
+              )}
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
                   {person.email}
@@ -92,7 +114,12 @@ export function AlertSendList({ people, since }: { people: SendPerson[]; since: 
               <p className="mt-2 text-neutral-800">Subject: {subject(jobs.length)}</p>
               <p className="mt-2 flex flex-wrap items-center gap-2 text-neutral-500">
                 <span>
-                  {jobs.length} of {person.jobs.length} {person.jobs.length === 1 ? "role" : "roles"} ticked
+                  {jobs.length} new
+                  {already > 0 && (
+                    <span className="ml-2 font-bold text-red-600">
+                      {already} already alerted
+                    </span>
+                  )}
                 </span>
                 {jobs.length > 0 && (
                   <Link
@@ -138,11 +165,31 @@ export function AlertSendList({ people, since }: { people: SendPerson[]; since: 
                               onChange={() => toggle(person.id, job.id)}
                             />
                             <span>
-                              <Link href={`/jobs/${job.id}`} className="font-medium text-neutral-900 hover:underline">
-                                {job.role}
-                              </Link>
-                              <span className="text-neutral-700"> at {job.venue}</span>
-                              <span className="block text-neutral-500">
+                              {job.alreadySent ? (
+                                <span className="mb-1 inline-flex rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+                                  Already alerted
+                                </span>
+                              ) : (
+                                <span
+                                  className="mb-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+                                  style={{ background: "#4E6B1F" }}
+                                >
+                                  New
+                                </span>
+                              )}
+                              <span className="block">
+                                <Link
+                                  href={`/jobs/${job.id}`}
+                                  className={`font-medium hover:underline ${job.alreadySent ? "text-red-700" : "text-neutral-900"}`}
+                                >
+                                  {job.role}
+                                </Link>
+                                <span className={job.alreadySent ? "text-red-700" : "text-neutral-700"}>
+                                  {" "}
+                                  at {job.venue}
+                                </span>
+                              </span>
+                              <span className={`block ${job.alreadySent ? "text-red-600" : "text-neutral-500"}`}>
                                 {job.place} · Admin {job.adminLabel}
                               </span>
                             </span>
