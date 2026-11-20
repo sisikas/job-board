@@ -2,12 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertConditions } from "@/components/AlertConditions";
 import { AlertsTabs } from "@/components/AlertsTabs";
+import { AlertSendList } from "@/components/AlertSendList";
+import { MarkAlertsSent } from "@/components/MarkAlertsSent";
 import { isAuthed } from "@/lib/auth";
 import {
-  alertSubject,
   formatJobPlace,
   getAlertPreview,
   parseAlertSince,
+  utcDay,
   type AlertJob,
   type AlertSubscriber,
 } from "@/lib/alerts";
@@ -15,11 +17,6 @@ import { formatDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Send Alerts — Admin" };
-
-function alertsHref(since: string | null, userId?: string) {
-  const path = userId ? `/admin/alerts/${userId}` : "/admin/alerts";
-  return since ? `${path}?since=${encodeURIComponent(since)}` : path;
-}
 
 function Count({ value, label }: { value: number; label: string }) {
   return (
@@ -48,6 +45,11 @@ function PreferenceBlock({ person }: { person: AlertSubscriber }) {
       )}
     </div>
   );
+}
+
+function lastEmailed(value: Date | null) {
+  if (!value) return "Not emailed yet";
+  return `Last emailed ${formatDate(utcDay(value))}`;
 }
 
 function JobList({ jobs }: { jobs: AlertJob[] }) {
@@ -89,7 +91,7 @@ export default async function AlertsPage({
           <h1 className="text-xl font-semibold text-neutral-900">Send Alerts</h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             Who would get an email if you sent now, and which jobs would be in it.
-            This page only previews. It does not send email or change anyone&apos;s last-emailed date.
+            This page does not send email. Tick the roles you put in the email, then mark those as sent.
           </p>
           <AlertsTabs current="send" />
         </div>
@@ -147,41 +149,28 @@ export default async function AlertsPage({
               Nobody would get an email for this preview.
             </p>
           ) : (
-            <ul className="space-y-3 border-t border-neutral-100 bg-neutral-50 p-4">
-              {preview.recipients.map((person) => (
-                <li key={person.id} className="rounded-xl border border-neutral-200 bg-white p-4 text-sm">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
-                      {person.email}
-                    </a>
-                  </div>
-                  <p className="mt-2 text-neutral-800">
-                    Subject: {alertSubject(person.jobs.length)}
-                  </p>
-                  <p className="mt-2 flex flex-wrap items-center gap-2 text-neutral-500">
-                    <span>
-                      {person.jobs.length} {person.jobs.length === 1 ? "job" : "jobs"}
-                    </span>
-                    <Link
-                      href={alertsHref(since, person.id)}
-                      className="inline-flex rounded-full px-3 py-1 text-sm font-bold text-white"
-                      style={{ background: "var(--brand-logo-green)" }}
-                    >
-                      Preview email
-                    </Link>
-                  </p>
-                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                    <PreferenceBlock person={person} />
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-neutral-500">Jobs in the email</p>
-                      <div className="mt-1">
-                        <JobList jobs={person.jobs} />
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <AlertSendList
+              key={preview.recipients
+                .map((person) => `${person.id}:${person.jobs.map((job) => job.id).join(".")}`)
+                .join("|")}
+              since={since}
+              people={preview.recipients.map((person) => ({
+                id: person.id,
+                email: person.email,
+                lastEmailed: lastEmailed(person.lastSentAt),
+                canClear: Boolean(person.lastSentAt),
+                roles: person.roles,
+                locations: person.locations,
+                unmatchedPreferences: person.unmatchedPreferences,
+                jobs: person.jobs.map((job) => ({
+                  id: job.id,
+                  role: job.role,
+                  venue: job.venue,
+                  place: formatJobPlace(job) || "No city",
+                  adminLabel: formatDate(job.adminDate),
+                })),
+              }))}
+            />
           )}
         </details>
 
@@ -201,6 +190,18 @@ export default async function AlertsPage({
                     <a href={`mailto:${person.email}`} className="font-medium text-neutral-900 hover:underline">
                       {person.email}
                     </a>
+                    <span className="flex flex-wrap items-center gap-2 text-neutral-500">
+                      {lastEmailed(person.lastSentAt)}
+                      {person.lastSentAt && (
+                        <MarkAlertsSent
+                          key={`clear-${person.lastSentAt.toISOString()}`}
+                          ids={[person.id]}
+                          mode="clear"
+                          label="Clear"
+                          confirm={`Forget every role marked sent for ${person.email}? They can show in the preview again.`}
+                        />
+                      )}
+                    </span>
                   </div>
                   <div className="mt-3">
                     <PreferenceBlock person={person} />
@@ -216,8 +217,8 @@ export default async function AlertsPage({
             Jobs that would not be emailed ({preview.quietJobs.length} of {preview.jobCount})
           </summary>
           <p className="border-t border-neutral-100 px-4 py-3 text-sm text-neutral-500">
-            A job is listed here when nobody&apos;s role and place match it, or its admin date is
-            not after the day they subscribed and, when they have been emailed, that last email.
+            A job is listed here when nobody&apos;s role and place match it, its admin date is
+            before the day they subscribed, or everyone it matches has already been marked sent for it.
           </p>
           {preview.quietJobs.length > 0 && (
             <ul className="divide-y divide-neutral-100 border-t border-neutral-100">

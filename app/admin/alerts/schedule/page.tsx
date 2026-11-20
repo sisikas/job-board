@@ -57,6 +57,7 @@ export default async function AlertSchedulePage({
           <h1 className="text-xl font-semibold text-neutral-900">Send Alerts</h1>
           <p className="mt-0.5 text-sm text-neutral-500">
             Tick Sent when an alert has gone out. Click a date to add, edit, or delete a note.
+            A tick here is only a calendar note. It does not change who still needs an email. Use Mark as sent on the Send tab for that.
           </p>
           <AlertsTabs current="schedule" />
         </div>

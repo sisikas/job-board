@@ -1,29 +1,44 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CopyAlertEmail } from "@/components/CopyAlertEmail";
+import { MarkAlertsSent } from "@/components/MarkAlertsSent";
 import { isAuthed } from "@/lib/auth";
-import { alertUnsubscribeUrl, getAlertPreview, parseAlertSince, renderAlertEmail } from "@/lib/alerts";
+import { alertUnsubscribeUrl, getAlertPreview, parseAlertSince, renderAlertEmail, utcDay } from "@/lib/alerts";
+import { formatDate } from "@/lib/format";
 import { ensureUnsubscribeToken } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Preview alert — Admin" };
+
+function selectedJobIds(value: string | undefined): Set<string> | null {
+  if (!value?.trim()) return null;
+  const ids = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+  return new Set(ids);
+}
 
 export default async function AlertPreviewPage({
   params,
   searchParams,
 }: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ since?: string }>;
+  searchParams: Promise<{ since?: string; jobs?: string }>;
 }) {
   if (!(await isAuthed())) redirect("/admin");
 
   const { userId } = await params;
-  const sinceParam = (await searchParams).since;
-  const since = parseAlertSince(sinceParam);
+  const query = await searchParams;
+  const since = parseAlertSince(query.since);
   const preview = await getAlertPreview(since);
-  const person = [...preview.recipients, ...preview.unmatchedSubscribers].find(
+  const found = [...preview.recipients, ...preview.unmatchedSubscribers].find(
     (subscriber) => subscriber.id === userId
   );
+  const picked = selectedJobIds(query.jobs);
+  const person = found
+    ? { ...found, jobs: picked ? found.jobs.filter((job) => picked.has(job.id)) : found.jobs }
+    : null;
   const back = since ? `/admin/alerts?since=${encodeURIComponent(since)}` : "/admin/alerts";
   const unsubscribeToken =
     person && person.jobs.length > 0 ? await ensureUnsubscribeToken(person.id) : null;
@@ -84,6 +99,22 @@ export default async function AlertPreviewPage({
                 </div>
               </section>
             ))}
+            <div className="mt-6 rounded-xl border border-neutral-200 bg-white px-4 py-4">
+              <p className="text-sm text-neutral-600">
+                {person?.lastSentAt
+                  ? `Last emailed ${formatDate(utcDay(person.lastSentAt))}.`
+                  : "Not emailed yet."}{" "}
+                After you send this yourself, mark the roles in this email as sent. Anything left out stays for next time. This does not send the email.
+              </p>
+              <div className="mt-3">
+                <MarkAlertsSent
+                  key={person?.jobs.map((job) => job.id).join(".") ?? "none"}
+                  pairs={person ? person.jobs.map((job) => ({ userId: person.id, jobId: job.id })) : []}
+                  label="Mark these roles as sent"
+                  confirm={`Mark the ${person?.jobs.length ?? 0} ${person?.jobs.length === 1 ? "role" : "roles"} in this email as sent for ${person?.email ?? "this person"}? Anything left out stays for next time. This does not send the email.`}
+                />
+              </div>
+            </div>
             <details className="mt-4 rounded-xl border border-neutral-200 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-neutral-900">
                 Plain-text version

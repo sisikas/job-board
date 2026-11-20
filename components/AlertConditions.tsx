@@ -7,7 +7,7 @@ const notes = [
   "The job's role must be one of their roles. Chef and Sous Chef stay separate. Part-time and private versions of that same role are included, in any spacing or punctuation, such as Chef (part-time) or Private Chef.",
   "The job's city or country must be one of their places. A country covers every job in that country. Anywhere covers every city.",
   "All of one person's matches go in a single email.",
-  "The job's admin date must be after the day they subscribed. If they have already been emailed, it must also be after that last email. The employer's posted date is not used.",
+  "The job's admin date must be on or after the day they subscribed. A role already marked as sent to that person stays out. A role that has not been marked still comes through. The employer's posted date is not used.",
 ];
 
 export function AlertConditions() {

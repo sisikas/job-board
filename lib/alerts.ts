@@ -14,11 +14,11 @@ import { ensureUserTables } from "@/lib/users";
  * - one of their places is the job's city, the job's country, or Anywhere
  * - they asked for alerts and have not unsubscribed. People who said no at
  *   signup stay out, because email_alerts is false for them.
- * - the job's admin date is after the UTC day they subscribed
- * - the job's admin date is after the UTC day of their last alert, if any
+ * - the job's admin date is on or after the UTC day they subscribed
+ * - that job has not already been marked sent for them
  *
  * Callers group the rows so each person appears once, with every matching job.
- * Nothing here sends mail or writes a last-sent time.
+ * The preview does not send mail. Marking sent records the job ids she confirms.
  */
 
 export type AlertJob = {
@@ -175,24 +175,18 @@ function roleMatches(wanted: string, jobRole: string): boolean {
   return role === titled || role === coreRole(jobRole);
 }
 
-/** Admin date must be after signup, and after the last email when one exists. */
-function eligibleByDate(
-  adminDate: string,
-  subscribedAt: Date | null,
-  lastSentAt: Date | null
-): boolean {
-  if (!subscribedAt || !(adminDate > utcDay(subscribedAt))) return false;
-  if (!lastSentAt) return true;
-  return adminDate > utcDay(lastSentAt);
+/** A job is still open for this person when it is on or after signup and not already marked sent. */
+function stillOpen(job: AlertJob, subscribedAt: Date | null, sentJobIds: Set<string>): boolean {
+  if (!subscribedAt || job.adminDate < utcDay(subscribedAt)) return false;
+  return !sentJobIds.has(job.id);
 }
 
 function unmatchedPreferences(
-  person: Pick<AlertSubscriber, "roles" | "locations" | "subscribedAt" | "lastSentAt">,
-  jobs: AlertJob[]
+  person: Pick<AlertSubscriber, "roles" | "locations" | "subscribedAt">,
+  jobs: AlertJob[],
+  sentJobIds: Set<string>
 ): string[] {
-  const eligible = jobs.filter((job) =>
-    eligibleByDate(job.adminDate, person.subscribedAt, person.lastSentAt)
-  );
+  const eligible = jobs.filter((job) => stillOpen(job, person.subscribedAt, sentJobIds));
   const roles = person.roles.filter(
     (role) =>
       !eligible.some(
@@ -388,13 +382,88 @@ export function renderAlertEmail(
   return { subject, text, html };
 }
 
+const USER_ID = /^[0-9a-f-]{36}$/i;
+
+let sentTableReady: Promise<void> | undefined;
+
+/** Remembers which exact jobs have already been marked sent, per person. */
+export function ensureAlertSends(): Promise<void> {
+  if (!sentTableReady) {
+    sentTableReady = (async () => {
+      await ensureUserTables();
+      await getSql()`
+        CREATE TABLE IF NOT EXISTS alert_sent_jobs (
+          user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          job_id text NOT NULL,
+          sent_at timestamptz NOT NULL DEFAULT now(),
+          PRIMARY KEY (user_id, job_id)
+        )
+      `;
+    })().catch((error) => {
+      sentTableReady = undefined;
+      throw error;
+    });
+  }
+  return sentTableReady;
+}
+
+/** Records these exact jobs as emailed by hand. Does not send mail. */
+export async function markAlertsSent(pairs: { userId: string; jobId: string }[]): Promise<number> {
+  const unique = new Map<string, { userId: string; jobId: string }>();
+  for (const pair of pairs) {
+    if (!USER_ID.test(pair.userId) || !USER_ID.test(pair.jobId)) continue;
+    unique.set(`${pair.userId}|${pair.jobId}`, pair);
+  }
+  const rows = [...unique.values()];
+  if (rows.length === 0) return 0;
+  await ensureAlertSends();
+  const userIds = [...new Set(rows.map((row) => row.userId))];
+  await getSql().begin(async (tx) => {
+    for (const row of rows) {
+      await tx`
+        INSERT INTO alert_sent_jobs (user_id, job_id)
+        VALUES (${row.userId}, ${row.jobId})
+        ON CONFLICT (user_id, job_id) DO NOTHING
+      `;
+    }
+    await tx`
+      UPDATE users
+      SET alerts_last_sent_at = now()
+      WHERE id IN ${tx(userIds)}
+        AND email_alerts = true
+        AND unsubscribed_at IS NULL
+        AND onboarded_at IS NOT NULL
+    `;
+  });
+  return rows.length;
+}
+
+/** Forgets every job marked sent for these people, so those jobs can show again. */
+export async function clearAlertsSent(ids: string[]): Promise<number> {
+  const unique = [...new Set(ids.filter((id) => USER_ID.test(id)))];
+  if (unique.length === 0) return 0;
+  await ensureAlertSends();
+  await getSql().begin(async (tx) => {
+    await tx`DELETE FROM alert_sent_jobs WHERE user_id IN ${tx(unique)}`;
+    await tx`
+      UPDATE users
+      SET alerts_last_sent_at = NULL
+      WHERE id IN ${tx(unique)}
+        AND email_alerts = true
+        AND unsubscribed_at IS NULL
+        AND onboarded_at IS NOT NULL
+    `;
+  });
+  return unique.length;
+}
+
 export async function getAlertPreview(since: string | null): Promise<AlertPreview> {
-  await Promise.all([ensureUserTables(), ensureJobColumns()]);
+  await Promise.all([ensureUserTables(), ensureJobColumns(), ensureAlertSends()]);
   const sql = getSql();
   const adminCutoff = since ? sql`j.admin_date >= ${since}` : sql`TRUE`;
   const jobCutoff = since ? sql`admin_date >= ${since}` : sql`TRUE`;
 
-  const [matchRows, jobRows, subscriberRows, optedOutRows] = await Promise.all([
+  const [matchRows, jobRows, subscriberRows, optedOutRows, sentRows] = await Promise.all([
     sql<MatchRow[]>`
       SELECT
         u.id AS user_id,
@@ -452,10 +521,10 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       WHERE j.admin_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
         AND ${adminCutoff}
         AND u.onboarded_at IS NOT NULL
-        AND j.admin_date > to_char(u.onboarded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
-        AND (
-          u.alerts_last_sent_at IS NULL
-          OR j.admin_date > to_char(u.alerts_last_sent_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
+        AND j.admin_date >= to_char(u.onboarded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD')
+        AND NOT EXISTS (
+          SELECT 1 FROM alert_sent_jobs sent
+          WHERE sent.user_id = u.id AND sent.job_id = j.id
         )
       ORDER BY u.email ASC, j.admin_date DESC, j.role ASC
     `,
@@ -479,10 +548,19 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
       WHERE onboarded_at IS NOT NULL
         AND (email_alerts = false OR unsubscribed_at IS NOT NULL)
     `,
+    sql<{ user_id: string; job_id: string }[]>`
+      SELECT user_id, job_id FROM alert_sent_jobs
+    `,
   ]);
 
   const jobs = jobRows.map(jobFromRow);
   const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const sentByUser = new Map<string, Set<string>>();
+  for (const row of sentRows) {
+    const sent = sentByUser.get(row.user_id) ?? new Set<string>();
+    sent.add(row.job_id);
+    sentByUser.set(row.user_id, sent);
+  }
   const people = new Map<string, AlertSubscriber>();
 
   for (const row of subscriberRows) {
@@ -530,7 +608,7 @@ export async function getAlertPreview(since: string | null): Promise<AlertPrevie
 
   const subscribers = [...people.values()];
   for (const person of subscribers) {
-    person.unmatchedPreferences = unmatchedPreferences(person, jobs);
+    person.unmatchedPreferences = unmatchedPreferences(person, jobs, sentByUser.get(person.id) ?? new Set());
     person.jobs.sort((a, b) => b.adminDate.localeCompare(a.adminDate) || a.role.localeCompare(b.role));
   }
   subscribers.sort((a, b) => a.email.localeCompare(b.email));

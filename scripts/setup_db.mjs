@@ -120,6 +120,14 @@ async function main() {
     CREATE UNIQUE INDEX IF NOT EXISTS users_unsubscribe_token_idx
     ON users (unsubscribe_token)
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS alert_sent_jobs (
+      user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      job_id text NOT NULL,
+      sent_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (user_id, job_id)
+    )
+  `;
   console.log("✔ Tables `users`, `sessions` and `password_resets` are ready.");
 
   // Keep in sync with ensureTable() in lib/instagram-schedule.ts.
