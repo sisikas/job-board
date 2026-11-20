@@ -261,7 +261,7 @@ export async function getAdminJobs(): Promise<Job[]> {
 }
 
 export type JobFilters = {
-  q?: string; // free-text search across role / venue / description
+  q?: string; // role or business name only. The description is not searched.
   location?: string; // typed text: matches city or country, case-insensitive
   city?: string; // picked from the place list
   country?: string;
@@ -269,6 +269,60 @@ export type JobFilters = {
   roleText?: string[]; // typed roles: the job title contains the words
   places?: string[]; // "City, Country", a country, or Anywhere
 };
+
+/** Lowercase, drop accents and punctuation, so "Café" and "cafe" compare the same. */
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/** Insertions, deletions, substitutions, and swapped neighbouring letters. */
+function editDistance(a: string, b: string): number {
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const score: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(0));
+  for (let i = 0; i < rows; i++) score[i][0] = i;
+  for (let j = 0; j < cols; j++) score[0][j] = j;
+  for (let i = 1; i < rows; i++) {
+    for (let j = 1; j < cols; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      score[i][j] = Math.min(score[i - 1][j] + 1, score[i][j - 1] + 1, score[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        score[i][j] = Math.min(score[i][j], score[i - 2][j - 2] + 1);
+      }
+    }
+  }
+  return score[a.length][b.length];
+}
+
+/** A typed word is close to a business or role word: same start, or one or two slips. */
+function wordsAreClose(typed: string, word: string): boolean {
+  if (typed === word) return true;
+  const shorter = typed.length <= word.length ? typed : word;
+  const longer = typed.length <= word.length ? word : typed;
+  if (shorter.length >= 4 && longer.startsWith(shorter)) return true;
+  if (typed.length < 4 || word.length < 4) return false;
+  const limit = Math.min(typed.length, word.length) >= 8 ? 2 : 1;
+  if (Math.abs(typed.length - word.length) > limit) return false;
+  return editDistance(typed, word) <= limit;
+}
+
+function textMatches(query: string, job: Pick<Job, "role" | "venue">): boolean {
+  const q = normalizeSearch(query);
+  if (!q) return true;
+  const venue = normalizeSearch(job.venue);
+  const role = normalizeSearch(job.role);
+  const haystack = `${role} ${venue}`;
+  if (haystack.includes(q)) return true;
+  const names = haystack.split(" ").filter((word) => word.length > 1);
+  return q.split(" ").every((word) => haystack.includes(word) || names.some((name) => wordsAreClose(word, name)));
+}
 
 function roleTextMatches(jobRole: string, typed: string) {
   const role = jobRole.trim().toLowerCase();
@@ -296,10 +350,7 @@ export async function searchJobs(filters: JobFilters): Promise<Job[]> {
   return jobs.filter((job) => {
     if (job.status !== "open") return false;
 
-    if (q) {
-      const haystack = `${job.role} ${job.venue} ${job.description}`.toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
+    if (q && !textMatches(q, job)) return false;
 
     if (roles.length > 0 || roleText.length > 0) {
       const jobRole = job.role.trim().toLowerCase();
