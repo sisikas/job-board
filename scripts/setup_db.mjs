@@ -143,9 +143,21 @@ async function main() {
       updated_at timestamptz NOT NULL DEFAULT now()
     )
   `;
+  await sql`ALTER TABLE instagram_posts ADD COLUMN IF NOT EXISTS sort_order integer`;
   await sql`
-    CREATE INDEX IF NOT EXISTS instagram_posts_schedule_idx
-    ON instagram_posts (post_date, created_at)
+    WITH ranked AS (
+      SELECT id, (row_number() OVER (ORDER BY post_date DESC, created_at DESC))::int - 1 AS n
+      FROM instagram_posts
+      WHERE sort_order IS NULL
+    )
+    UPDATE instagram_posts AS posts
+    SET sort_order = ranked.n
+    FROM ranked
+    WHERE posts.id = ranked.id
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS instagram_posts_order_idx
+    ON instagram_posts (sort_order, created_at)
   `;
   console.log("✔ Table `instagram_posts` is ready.");
 

@@ -10,44 +10,12 @@ import {
   type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { todayISODate } from "@/lib/format";
-import type { InstaPost, InstaStatus } from "@/lib/instagram-schedule";
+import type { InstaPost } from "@/lib/instagram-schedule";
 
 const IG_LIMIT = 2200;
 const FIELD =
   "w-full rounded-lg border px-2.5 py-1.5 text-sm text-neutral-900 placeholder:text-neutral-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900";
 const TEXT_FIELD = FIELD + " border-neutral-200 bg-white";
-
-type FilterId = "all" | InstaStatus;
-
-const FILTERS: { id: FilterId; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "pending", label: "Not yet" },
-  { id: "uploaded", label: "Uploaded" },
-];
-
-function comparePosts(a: InstaPost, b: InstaPost) {
-  if (a.postDate !== b.postDate) return a.postDate > b.postDate ? -1 : 1;
-  if (a.createdAt !== b.createdAt) return a.createdAt > b.createdAt ? -1 : 1;
-  return a.id > b.id ? -1 : 1;
-}
-
-function formatDay(iso: string) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
-}
-
-function waitingLine(posts: InstaPost[], today: string) {
-  const waiting = posts.filter((post) => post.status === "pending");
-  if (waiting.length === 0) return "Nothing waiting to be posted.";
-  const oldest = waiting.reduce((soonest, post) => (post.postDate < soonest.postDate ? post : soonest));
-  const count = `${waiting.length} still to post`;
-  if (oldest.postDate < today) return `${count}. Oldest is ${formatDay(oldest.postDate)}.`;
-  if (oldest.postDate === today) return `${count}. Next is today.`;
-  return `${count}. Next is ${formatDay(oldest.postDate)}.`;
-}
 
 function imageSrc(post: InstaPost) {
   return `/api/admin/instagram/${post.id}/image?v=${encodeURIComponent(post.updatedAt)}`;
@@ -56,30 +24,66 @@ function imageSrc(post: InstaPost) {
 function ProfileGrid({
   posts,
   onPreview,
+  onMove,
 }: {
   posts: InstaPost[];
   onPreview: (src: string, caption: string) => void;
+  onMove: (fromId: string, toId: string) => void;
 }) {
   const tiles = posts.filter((post) => post.hasImage);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   return (
     <section aria-label="Instagram grid">
-      <p className="text-xs text-neutral-500">Newest posting date at the top left, in the same 4:5 shape as the photos.</p>
+      <p className="text-xs text-neutral-500">
+        Drag a photo onto another to change the order. Top left is first, in the same 4:5 shape as the photos.
+      </p>
       {tiles.length === 0 ? (
         <p className="mt-3 text-sm text-neutral-500">Add an image to a post to see it here.</p>
       ) : (
         <div className="mt-3 grid w-full max-w-xl grid-cols-3 gap-1">
           {tiles.map((post) => {
             const src = imageSrc(post);
+            const over = overId === post.id && draggingId !== post.id;
             return (
               <button
                 key={post.id}
                 type="button"
+                draggable
                 onClick={() => onPreview(src, post.caption)}
-                aria-label={`View post from ${formatDay(post.postDate)}`}
-                className="aspect-[4/5] overflow-hidden bg-neutral-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", post.id);
+                  setDraggingId(post.id);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setOverId(null);
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  setOverId(post.id);
+                }}
+                onDragLeave={() => {
+                  if (overId === post.id) setOverId(null);
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const fromId = event.dataTransfer.getData("text/plain") || draggingId || "";
+                  setDraggingId(null);
+                  setOverId(null);
+                  if (fromId && fromId !== post.id) onMove(fromId, post.id);
+                }}
+                aria-label="View or drag photo"
+                className={
+                  "aspect-[4/5] cursor-grab overflow-hidden bg-neutral-200 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900" +
+                  (draggingId === post.id ? " opacity-50" : "") +
+                  (over ? " ring-2 ring-neutral-900" : "")
+                }
               >
-                <img src={src} alt="" className="h-full w-full object-cover" />
+                <img src={src} alt="" draggable={false} className="h-full w-full object-cover" />
               </button>
             );
           })}
@@ -87,13 +91,6 @@ function ProfileGrid({
       )}
     </section>
   );
-}
-
-function dateHint(postDate: string, status: InstaStatus, today: string) {
-  if (status !== "pending") return "";
-  if (postDate === today) return "Today";
-  if (postDate < today) return "Still to post";
-  return "";
 }
 
 async function readError(res: Response) {
@@ -351,12 +348,6 @@ function ImageWell({
   );
 }
 
-function statusClass(status: InstaStatus) {
-  return status === "uploaded"
-    ? "border-[#7eaf4a] bg-[#e7f6d4] text-[#2f5c16]"
-    : "border-[#e4d3a1] bg-[#fff6dd] text-[#6a5018]";
-}
-
 function Lightbox({
   src,
   caption,
@@ -411,22 +402,18 @@ function Lightbox({
 
 function PostRow({
   post,
-  today,
   onUpdated,
   onRemove,
   onPreview,
   onUnauthorized,
 }: {
   post: InstaPost;
-  today: string;
   onUpdated: (post: InstaPost) => void;
   onRemove: (post: InstaPost) => void;
   onPreview: (src: string, caption: string) => void;
   onUnauthorized: () => void;
 }) {
   const [caption, setCaption] = useState(post.caption);
-  const [postDate, setPostDate] = useState(post.postDate);
-  const [status, setStatus] = useState<InstaStatus>(post.status);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState("");
   const [imageError, setImageError] = useState("");
@@ -437,9 +424,7 @@ function PostRow({
   const chain = useRef<Promise<void>>(Promise.resolve());
   const mounted = useRef(true);
   const captionRef = useRef(post.caption);
-  const dateRef = useRef(post.postDate);
-  const statusRef = useRef<InstaStatus>(post.status);
-  const saved = useRef({ caption: post.caption, postDate: post.postDate, status: post.status });
+  const saved = useRef(post.caption);
 
   useEffect(() => {
     mounted.current = true;
@@ -451,22 +436,11 @@ function PostRow({
   useEffect(() => {
     return () => {
       if (timer.current) window.clearTimeout(timer.current);
-      const body = {
-        caption: captionRef.current,
-        postDate: dateRef.current,
-        status: statusRef.current,
-      };
-      if (
-        body.caption === saved.current.caption &&
-        body.postDate === saved.current.postDate &&
-        body.status === saved.current.status
-      ) {
-        return;
-      }
+      if (captionRef.current === saved.current) return;
       void fetch(`/api/admin/instagram/${post.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ caption: captionRef.current }),
         keepalive: true,
       });
     };
@@ -488,18 +462,8 @@ function PostRow({
 
   const enqueue = useCallback(() => {
     const run = chain.current.then(async () => {
-      const body = {
-        caption: captionRef.current,
-        postDate: dateRef.current,
-        status: statusRef.current,
-      };
-      if (
-        body.caption === saved.current.caption &&
-        body.postDate === saved.current.postDate &&
-        body.status === saved.current.status
-      ) {
-        return;
-      }
+      const value = captionRef.current;
+      if (value === saved.current) return;
       if (mounted.current) {
         setSaving("saving");
         setSaveError("");
@@ -507,7 +471,7 @@ function PostRow({
       const res = await fetch(`/api/admin/instagram/${post.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ caption: value }),
       });
       if (unauthorized(res)) {
         onUnauthorized();
@@ -521,7 +485,7 @@ function PostRow({
         return;
       }
       const data = (await res.json()) as { post: InstaPost };
-      saved.current = body;
+      saved.current = value;
       onUpdated(data.post);
       if (mounted.current) setSaving("saved");
     });
@@ -540,24 +504,6 @@ function PostRow({
 
   function blurCaption() {
     if (timer.current) window.clearTimeout(timer.current);
-    enqueue();
-  }
-
-  function changeDate(value: string) {
-    setPostDate(value);
-    dateRef.current = value;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) enqueue();
-  }
-
-  function blurDate() {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateRef.current)) return;
-    dateRef.current = saved.current.postDate;
-    setPostDate(saved.current.postDate);
-  }
-
-  function changeStatus(value: InstaStatus) {
-    setStatus(value);
-    statusRef.current = value;
     enqueue();
   }
 
@@ -594,7 +540,6 @@ function PostRow({
   }
 
   const src = localUrl ?? (post.hasImage ? imageSrc(post) : null);
-  const hint = dateHint(postDate, status, today);
 
   return (
     <article
@@ -606,10 +551,7 @@ function PostRow({
         event.preventDefault();
         void attachImage(file);
       }}
-      className={
-        "grid grid-cols-1 gap-3 border-t border-l-4 p-4 md:grid-cols-[9rem_12.5rem_minmax(0,1fr)_10.5rem_2.25rem] md:items-start md:gap-4 " +
-        (status === "uploaded" ? "border-l-[#7eaf4a]" : "border-l-[#e4d3a1]")
-      }
+      className="grid grid-cols-1 gap-3 border-t border-neutral-100 p-4 md:grid-cols-[9rem_minmax(0,1fr)_2.25rem] md:items-start md:gap-4"
     >
       <div role="cell">
         <span className="mb-1 block text-xs font-medium text-neutral-500 md:hidden">Image</span>
@@ -620,20 +562,6 @@ function PostRow({
           onFile={(file) => void attachImage(file)}
           onPreview={src ? () => onPreview(src, captionRef.current) : undefined}
         />
-      </div>
-      <div role="cell">
-        <span className="mb-1 block text-xs font-medium text-neutral-500 md:hidden">Posting date</span>
-        <input
-          type="date"
-          value={postDate}
-          onChange={(event) => changeDate(event.target.value)}
-          onBlur={blurDate}
-          aria-label="Posting date"
-          className={TEXT_FIELD}
-        />
-        <p className={"mt-1 min-h-4 text-xs " + (hint === "Still to post" ? "text-amber-800" : "text-neutral-500")}>
-          {hint}
-        </p>
       </div>
       <div role="cell" className="min-w-0">
         <span className="mb-1 block text-xs font-medium text-neutral-500 md:hidden">Caption</span>
@@ -658,18 +586,6 @@ function PostRow({
             {saving === "saving" ? "Saving…" : saving === "saved" ? "Saved" : saving === "error" ? saveError || "Couldn't save" : ""}
           </p>
         </div>
-      </div>
-      <div role="cell">
-        <span className="mb-1 block text-xs font-medium text-neutral-500 md:hidden">Status</span>
-        <select
-          value={status}
-          onChange={(event) => changeStatus(event.target.value as InstaStatus)}
-          aria-label="Status"
-          className={FIELD + " font-medium " + statusClass(status)}
-        >
-          <option value="pending">Not yet</option>
-          <option value="uploaded">Uploaded</option>
-        </select>
       </div>
       <div role="cell" className="md:pt-1">
         {confirmRemove ? (
@@ -710,25 +626,22 @@ export function InstaSchedule() {
     router.push("/admin");
     router.refresh();
   }, [router]);
-  const today = todayISODate();
   const [posts, setPosts] = useState<InstaPost[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [loadId, setLoadId] = useState(0);
-  const [filter, setFilter] = useState<FilterId>("all");
   const [view, setView] = useState<"grid" | "schedule">("schedule");
   const [notice, setNotice] = useState("");
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
   const closeLightbox = useCallback(() => setLightbox(null), []);
 
-  const [postDate, setPostDate] = useState(today);
   const [caption, setCaption] = useState("");
-  const [status, setStatus] = useState<InstaStatus>("pending");
   const [preview, setPreview] = useState<{ url: string; blob: Blob } | null>(null);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState("");
   const [formError, setFormError] = useState("");
   const [adding, setAdding] = useState(false);
   const captionInput = useRef<HTMLTextAreaElement>(null);
+  const orderBeforeDrag = useRef<InstaPost[] | null>(null);
 
   useEffect(() => {
     let cancel = false;
@@ -736,9 +649,9 @@ export function InstaSchedule() {
       try {
         const res = await fetch("/api/admin/instagram");
         if (unauthorized(res)) {
-        onUnauthorized();
-        return;
-      }
+          onUnauthorized();
+          return;
+        }
         if (!res.ok) throw new Error(await readError(res));
         const data = (await res.json()) as { posts: InstaPost[] };
         if (!cancel) {
@@ -759,7 +672,7 @@ export function InstaSchedule() {
   function applyPost(next: InstaPost) {
     setPosts((prev) => {
       if (!prev || !prev.some((post) => post.id === next.id)) return prev;
-      return prev.map((post) => (post.id === next.id ? next : post)).sort(comparePosts);
+      return prev.map((post) => (post.id === next.id ? next : post));
     });
   }
 
@@ -772,10 +685,41 @@ export function InstaSchedule() {
         return;
       }
       if (!res.ok) {
-        setPosts((prev) => (prev ? [...prev, post].sort(comparePosts) : [post]));
+        setPosts((prev) => (prev ? [post, ...prev] : [post]));
         setNotice("That post is still here. Try removing it again.");
       }
     })();
+  }
+
+  async function saveOrder(next: InstaPost[]) {
+    const res = await fetch("/api/admin/instagram/order", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ ids: next.map((post) => post.id) }),
+    });
+    if (unauthorized(res)) {
+      onUnauthorized();
+      return;
+    }
+    if (!res.ok) {
+      setPosts(orderBeforeDrag.current);
+      setNotice("The order didn't save. Try the drag again.");
+    }
+  }
+
+  function movePost(fromId: string, toId: string) {
+    setPosts((prev) => {
+      if (!prev) return prev;
+      orderBeforeDrag.current = prev;
+      const from = prev.findIndex((post) => post.id === fromId);
+      const to = prev.findIndex((post) => post.id === toId);
+      if (from < 0 || to < 0 || from === to) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      void saveOrder(next);
+      return next;
+    });
   }
 
   function clearPreview() {
@@ -804,10 +748,6 @@ export function InstaSchedule() {
 
   async function addPost(event: FormEvent) {
     event.preventDefault();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(postDate)) {
-      setFormError("Pick a posting date.");
-      return;
-    }
     setAdding(true);
     setFormError("");
     setNotice("");
@@ -815,7 +755,7 @@ export function InstaSchedule() {
       const res = await fetch("/api/admin/instagram", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ postDate, caption, status }),
+        body: JSON.stringify({ caption }),
       });
       if (unauthorized(res)) {
         onUnauthorized();
@@ -833,19 +773,17 @@ export function InstaSchedule() {
           return;
         }
         if (!imageRes.ok) {
-          setPosts((prev) => (prev ? [...prev, created].sort(comparePosts) : [created]));
+          setPosts((prev) => (prev ? [created, ...prev] : [created]));
           setNotice("The post is in the schedule. Add the image on its row.");
         } else {
           created = ((await imageRes.json()) as { post: InstaPost }).post;
-          setPosts((prev) => (prev ? [...prev, created].sort(comparePosts) : [created]));
+          setPosts((prev) => (prev ? [created, ...prev] : [created]));
         }
       } else {
-        setPosts((prev) => (prev ? [...prev, created].sort(comparePosts) : [created]));
+        setPosts((prev) => (prev ? [created, ...prev] : [created]));
       }
       const id = created.id;
-      if (filter !== "all" && filter !== created.status) setFilter("all");
       setCaption("");
-      setStatus("pending");
       clearPreview();
       setImageError("");
       requestAnimationFrame(() => {
@@ -879,8 +817,6 @@ export function InstaSchedule() {
     );
   }
 
-  const visible = posts.filter((post) => filter === "all" || post.status === filter);
-
   return (
     <div>
       {notice && (
@@ -900,7 +836,7 @@ export function InstaSchedule() {
         className="rounded-xl border border-neutral-200 bg-white p-4"
       >
         <h2 className="text-sm font-semibold text-neutral-900">New post</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-[9rem_12.5rem_minmax(0,1fr)_10.5rem] md:items-start">
+        <div className="mt-3 grid gap-3 md:grid-cols-[9rem_minmax(0,1fr)] md:items-start">
           <div>
             <span className="mb-1 block text-xs font-medium text-neutral-500">Image</span>
             <ImageWell
@@ -912,19 +848,6 @@ export function InstaSchedule() {
                 preview ? () => setLightbox({ src: preview.url, caption }) : undefined
               }
               onClear={clearPreview}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-500" htmlFor="insta-new-date">
-              Posting date
-            </label>
-            <input
-              id="insta-new-date"
-              type="date"
-              required
-              value={postDate}
-              onChange={(event) => setPostDate(event.target.value)}
-              className={TEXT_FIELD}
             />
           </div>
           <div className="min-w-0">
@@ -947,20 +870,6 @@ export function InstaSchedule() {
               <CaptionCount value={caption} />
             </div>
           </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-neutral-500" htmlFor="insta-new-status">
-              Status
-            </label>
-            <select
-              id="insta-new-status"
-              value={status}
-              onChange={(event) => setStatus(event.target.value as InstaStatus)}
-              className={FIELD + " font-medium " + statusClass(status)}
-            >
-              <option value="pending">Not yet</option>
-              <option value="uploaded">Uploaded</option>
-            </select>
-          </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           {formError ? (
@@ -972,7 +881,7 @@ export function InstaSchedule() {
           )}
           <button
             type="submit"
-            disabled={adding || imageBusy || !postDate}
+            disabled={adding || imageBusy}
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700 disabled:opacity-50"
           >
             {adding ? "Adding…" : "Add post"}
@@ -1013,72 +922,43 @@ export function InstaSchedule() {
         <ProfileGrid
           posts={posts}
           onPreview={(src, text) => setLightbox({ src, caption: text })}
+          onMove={movePost}
         />
       </div>
 
       <div id="insta-panel-schedule" role="tabpanel" aria-labelledby="insta-tab-schedule" hidden={view !== "schedule"}>
-      <div className="mt-5 mb-3 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-neutral-600">{waitingLine(posts, today)}</p>
-        <div role="group" aria-label="Filter posts" className="flex flex-wrap gap-2">
-          {FILTERS.map((item) => {
-            const count =
-              item.id === "all" ? posts.length : posts.filter((post) => post.status === item.id).length;
-            const selected = filter === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setFilter(item.id)}
-                className={
-                  "rounded-full border px-3 py-1 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 " +
-                  (selected
-                    ? "border-neutral-900 bg-neutral-900 text-white"
-                    : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-100")
-                }
-              >
-                {item.label} {count}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <section
-        role="table"
-        aria-label="Scheduled posts"
-        className="overflow-x-auto rounded-xl border border-neutral-200 bg-white"
-      >
-        <div
-          role="row"
-          className="hidden border-l-4 border-l-transparent px-4 py-3 text-xs font-medium text-neutral-500 md:grid md:grid-cols-[9rem_12.5rem_minmax(0,1fr)_10.5rem_2.25rem] md:gap-4"
+        <section
+          role="table"
+          aria-label="Scheduled posts"
+          className="mt-5 overflow-x-auto rounded-xl border border-neutral-200 bg-white"
         >
-          <div role="columnheader">Image</div>
-          <div role="columnheader">Posting date</div>
-          <div role="columnheader">Caption</div>
-          <div role="columnheader">Status</div>
-          <div role="columnheader">
-            <span className="sr-only">Remove</span>
+          <div
+            role="row"
+            className="hidden px-4 py-3 text-xs font-medium text-neutral-500 md:grid md:grid-cols-[9rem_minmax(0,1fr)_2.25rem] md:gap-4"
+          >
+            <div role="columnheader">Image</div>
+            <div role="columnheader">Caption</div>
+            <div role="columnheader">
+              <span className="sr-only">Remove</span>
+            </div>
           </div>
-        </div>
-        {visible.length === 0 ? (
-          <p className="border-t border-neutral-100 px-4 py-10 text-center text-sm text-neutral-500">
-            {posts.length === 0 ? "Nothing scheduled yet." : "Nothing in this view."}
-          </p>
-        ) : (
-          visible.map((post) => (
-            <PostRow
-              key={post.id}
-              post={post}
-              today={today}
-              onUpdated={applyPost}
-              onRemove={removePost}
-              onUnauthorized={onUnauthorized}
-              onPreview={(src, text) => setLightbox({ src, caption: text })}
-            />
-          ))
-        )}
-      </section>
+          {posts.length === 0 ? (
+            <p className="border-t border-neutral-100 px-4 py-10 text-center text-sm text-neutral-500">
+              Nothing scheduled yet.
+            </p>
+          ) : (
+            posts.map((post) => (
+              <PostRow
+                key={post.id}
+                post={post}
+                onUpdated={applyPost}
+                onRemove={removePost}
+                onUnauthorized={onUnauthorized}
+                onPreview={(src, text) => setLightbox({ src, caption: text })}
+              />
+            ))
+          )}
+        </section>
       </div>
 
       {lightbox && <Lightbox src={lightbox.src} caption={lightbox.caption} onClose={closeLightbox} />}

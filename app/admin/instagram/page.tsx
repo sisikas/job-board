@@ -15,7 +15,7 @@ export default async function InstaSchedulePage() {
         <div className="mx-auto max-w-6xl px-4 py-6">
           <h1 className="text-xl font-semibold text-neutral-900">Insta schedule</h1>
           <p className="mt-0.5 text-sm text-neutral-500">
-            Plan a post, then copy the caption when you publish it.
+            Plan a post, copy the caption, and drag photos into order on the Grid tab.
           </p>
         </div>
       </header>

@@ -51,9 +51,21 @@ function ensureTable(): Promise<void> {
           updated_at timestamptz NOT NULL DEFAULT now()
         )
       `;
+      await sql`ALTER TABLE instagram_posts ADD COLUMN IF NOT EXISTS sort_order integer`;
       await sql`
-        CREATE INDEX IF NOT EXISTS instagram_posts_schedule_idx
-        ON instagram_posts (post_date, created_at)
+        WITH ranked AS (
+          SELECT id, (row_number() OVER (ORDER BY post_date DESC, created_at DESC))::int - 1 AS n
+          FROM instagram_posts
+          WHERE sort_order IS NULL
+        )
+        UPDATE instagram_posts AS posts
+        SET sort_order = ranked.n
+        FROM ranked
+        WHERE posts.id = ranked.id
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS instagram_posts_order_idx
+        ON instagram_posts (sort_order, created_at)
       `;
     })().catch((err) => {
       tableReady = undefined;
@@ -114,7 +126,7 @@ export async function listInstaPosts(): Promise<InstaPost[]> {
            (image_bytes IS NOT NULL) AS has_image,
            created_at, updated_at
     FROM instagram_posts
-    ORDER BY post_date DESC, created_at DESC
+    ORDER BY sort_order ASC, created_at ASC
   `;
   return rows.map(rowToPost);
 }
@@ -133,17 +145,18 @@ async function readPost(id: string): Promise<InstaPost | null> {
   return rows[0] ? rowToPost(rows[0]) : null;
 }
 
-export async function createInstaPost(input: {
-  postDate: string;
-  caption: string;
-  status: InstaStatus;
-}): Promise<InstaPost> {
+export async function createInstaPost(input: { caption: string }): Promise<InstaPost> {
   await ensureTable();
   const sql = getSql();
   const id = randomUUID();
+  const postDate = new Date().toISOString().slice(0, 10);
+  const next = await sql<{ n: number }[]>`
+    SELECT COALESCE(MIN(sort_order) - 1, 0)::int AS n FROM instagram_posts
+  `;
+  const sortOrder = Number(next[0]?.n ?? 0);
   const rows = await sql<InstaRow[]>`
-    INSERT INTO instagram_posts (id, post_date, caption, status)
-    VALUES (${id}, ${input.postDate}, ${input.caption}, ${input.status})
+    INSERT INTO instagram_posts (id, post_date, caption, status, sort_order)
+    VALUES (${id}, ${postDate}, ${input.caption}, 'pending', ${sortOrder})
     RETURNING id, post_date, caption, status,
               (image_bytes IS NOT NULL) AS has_image,
               created_at, updated_at
@@ -212,6 +225,24 @@ export async function getInstaImage(
   const bytes = Buffer.isBuffer(row.image_bytes) ? row.image_bytes : Buffer.from(row.image_bytes);
   if (bytes.length === 0) return null;
   return { bytes, type: row.image_type };
+}
+
+const POST_ID = /^[0-9a-f-]{36}$/i;
+
+/** Saves the grid order. The first id is the top-left photo. */
+export async function reorderInstaPosts(ids: string[]): Promise<void> {
+  const unique = [...new Set(ids.filter((id) => POST_ID.test(id)))];
+  if (unique.length === 0) return;
+  await ensureTable();
+  await getSql().begin(async (tx) => {
+    for (let index = 0; index < unique.length; index++) {
+      await tx`
+        UPDATE instagram_posts
+        SET sort_order = ${index}, updated_at = now()
+        WHERE id = ${unique[index]}
+      `;
+    }
+  });
 }
 
 export async function deleteInstaPost(id: string): Promise<boolean> {
