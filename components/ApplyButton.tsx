@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import type { ApplyMethod } from "@/lib/jobs";
 
-export const APPLY_STYLE: Record<ApplyMethod, { bg: string; dot: string }> = {
-  email: { bg: "var(--apply-email-bg)", dot: "var(--apply-email-dot)" },
+export const APPLY_STYLE: Record<ApplyMethod, { bg: string; dot: string; text?: string }> = {
+  email: { bg: "var(--apply-email-bg)", dot: "var(--apply-email-dot)", text: "#ffffff" },
   instagram: { bg: "var(--apply-instagram-bg)", dot: "var(--apply-instagram-dot)" },
   link: { bg: "var(--apply-link-bg)", dot: "var(--apply-link-dot)" },
   website: { bg: "var(--apply-website-bg)", dot: "var(--apply-website-dot)" },
@@ -47,17 +47,17 @@ export function ApplyButton({
           "inline-flex items-center gap-2 rounded-full font-bold transition-opacity hover:opacity-90 " +
           (large ? "px-6 py-3.5 text-base" : "px-4 py-2 text-sm")
         }
-        style={{ background: style.bg, color: "var(--brand-ink)" }}
+        style={{ background: style.bg, color: style.text ?? "var(--brand-ink)" }}
       >
         {apply.method === "website" ? (
           <WebsiteIcon large={large} />
-        ) : (
+        ) : apply.method !== "email" ? (
           <span
             aria-hidden="true"
             className={"rounded-full shrink-0 " + (large ? "w-2.5 h-2.5" : "w-2 h-2")}
             style={{ background: style.dot }}
           />
-        )}
+        ) : null}
         {apply.label}
         <span aria-hidden="true">&rarr;</span>
       </button>

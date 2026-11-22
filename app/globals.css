@@ -51,8 +51,8 @@
   --brand-logo-green: #517228;
 
   /* apply chip tints */
-  --apply-email-bg: #dcdcc4;
-  --apply-email-dot: #5c6b32;
+  --apply-email-bg: var(--brand-brick);
+  --apply-email-dot: #ffffff;
   --apply-instagram-bg: #f0d6cc;
   --apply-instagram-dot: #a8462c;
   --apply-link-bg: #e6e1d3;

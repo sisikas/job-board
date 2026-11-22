@@ -135,22 +135,36 @@ export default async function JobDetail({
                   {job.country ? `, ${job.country}` : ""}
                 </p>
               </div>
+              {instagramHref && (
+                <div className="flex items-center">
+                  <InstagramLink
+                    href={instagramHref}
+                    venueName={job.venue}
+                    color="var(--brand-brick)"
+                    label="Socials"
+                  />
+                </div>
+              )}
             </div>
 
             <p className="mt-3 text-sm" style={{ color: "var(--brand-date)" }}>
               Posted {formatDate(job.postedAt)}
             </p>
 
-            {job.description && (
-              <p className="mt-6 text-base leading-relaxed" style={{ color: "var(--brand-body)" }}>
-                {job.description}
-              </p>
+            {job.description.trim() && (
+              <div className="mt-6 space-y-4 text-base leading-relaxed" style={{ color: "var(--brand-body)" }}>
+                {job.description
+                  .trim()
+                  .split(/\r?\n(?:\s*\r?\n)+/)
+                  .map((paragraph, index) => (
+                    <p key={index} className="whitespace-pre-line">
+                      {paragraph.trim()}
+                    </p>
+                  ))}
+              </div>
             )}
 
             <div className="mt-8 flex flex-col items-start gap-4">
-              {instagramHref && (
-                <InstagramLink href={instagramHref} venueName={job.venue} />
-              )}
               {isFilled ? (
                 <p className="text-sm" style={{ color: "var(--brand-muted)" }}>
                   This role isn't accepting new applicants right now — check the other open
