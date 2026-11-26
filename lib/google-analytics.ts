@@ -93,6 +93,14 @@ export function trackScrollEnd() {
   });
 }
 
+export function trackApplyClick(method: string) {
+  trackGaEvent("apply_click", {
+    page_path: location.pathname,
+    page_location: publicUrl(location.href),
+    apply_method: method,
+  });
+}
+
 export function trackPageView(path: string) {
   if (lastPage === path) return;
   lastPage = path;

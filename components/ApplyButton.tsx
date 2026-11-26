@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ApplyMethod } from "@/lib/jobs";
+import { trackApplyClick } from "@/lib/google-analytics";
 
 export const APPLY_STYLE: Record<ApplyMethod, { bg: string; dot: string; text?: string }> = {
   email: { bg: "var(--apply-email-bg)", dot: "var(--apply-email-dot)", text: "#ffffff" },
@@ -41,7 +42,10 @@ export function ApplyButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          trackApplyClick(apply.method);
+          setOpen(true);
+        }}
         title={apply.contact}
         className={
           "inline-flex items-center gap-2 rounded-full font-bold transition-opacity hover:opacity-90 " +

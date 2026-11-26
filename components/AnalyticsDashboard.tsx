@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import { formatDate } from "@/lib/format";
 import type {
   AnalyticsReport,
   CountStat,
+  JobStat,
   NameCount,
   ReturnVisit,
   TrendPoint,
@@ -121,7 +124,7 @@ export function AnalyticsDashboard() {
   const [end, setEnd] = useState(initial.end);
   const [preset, setPreset] = useState<number | "24h" | null>(7);
   const [excludeGreece, setExcludeGreece] = useState(false);
-  const [tab, setTab] = useState<"visitors" | "users" | "businesses">("visitors");
+  const [tab, setTab] = useState<"visitors" | "users" | "roles" | "businesses">("visitors");
   const [load, setLoad] = useState<Load>({ status: "loading" });
 
   useEffect(() => {
@@ -179,6 +182,7 @@ export function AnalyticsDashboard() {
           [
             ["visitors", "Visitors"],
             ["users", "Users"],
+            ["roles", "Roles"],
             ["businesses", "Businesses"],
           ] as const
         ).map(([id, label]) => {
@@ -215,6 +219,7 @@ export function AnalyticsDashboard() {
             [
               ["24h", "Last day"],
               [3, "Past 3 days"],
+              [5, "Past 5 days"],
               [7, "Past 7 days"],
               [28, "Past 28 days"],
             ] as const
@@ -314,6 +319,8 @@ export function AnalyticsDashboard() {
           <VisitorsView report={load.report} />
         ) : tab === "users" ? (
           <UsersView report={load.report} />
+        ) : tab === "roles" ? (
+          <RolesView report={load.report} />
         ) : (
           <BusinessesView report={load.report} />
         ))}
@@ -398,6 +405,158 @@ function UsersView({ report }: { report: AnalyticsReport }) {
           empty="Nobody signed up in these dates."
         />
       )}
+    </>
+  );
+}
+
+function RolesView({ report }: { report: AnalyticsReport }) {
+  const roles = report.roles;
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "open">("all");
+
+  const trimmed = query.trim().toLowerCase();
+  const filtered: JobStat[] = roles.items.filter((item) => {
+    if (statusFilter === "open" && item.status !== "open") return false;
+    if (!trimmed) return true;
+    const haystack = `${item.role} ${item.venue} ${item.city} ${item.country}`.toLowerCase();
+    return haystack.includes(trimmed);
+  });
+  const peak = filtered.reduce((highest, item) => Math.max(highest, item.views), 0);
+
+  return (
+    <>
+      <section className="grid gap-3 sm:grid-cols-3">
+        <Stat
+          label="Role views"
+          value={String(roles.totalViews)}
+          detail="Every time a job page was opened"
+        />
+        <Stat
+          label="People who viewed a role"
+          value={String(roles.totalVisitors)}
+          detail="Unique visitors across all roles"
+        />
+        <Stat
+          label="Clicked apply"
+          value={String(roles.totalApplyUsers)}
+          detail={
+            roles.totalApplyClicks > 0
+              ? `${roles.totalApplyClicks} ${roles.totalApplyClicks === 1 ? "click" : "clicks"} total`
+              : "No apply clicks in these dates"
+          }
+        />
+      </section>
+
+      <Panel title="Views by role">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by role or business…"
+            className="w-full sm:w-72 rounded-full bg-white px-3.5 py-1.5 text-sm outline-none"
+            style={{ border: `1px solid ${PINK_LINE}`, color: PINK_DEEP }}
+          />
+          <div className="flex gap-1.5">
+            {(
+              [
+                ["all", "All roles"],
+                ["open", "Open only"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setStatusFilter(id)}
+                className="rounded-full px-3 py-1 text-xs font-medium transition-colors"
+                style={
+                  statusFilter === id
+                    ? { background: PINK, color: "white" }
+                    : { background: "white", color: PINK_DEEP, border: `1px solid ${PINK_LINE}` }
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {roles.error ? (
+          <p className="text-sm" style={{ color: "#9b2c4a" }}>
+            {roles.error}
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm" style={{ color: PINK_MUTED }}>
+            No matching roles found.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-4">
+            {filtered.map((item) => {
+              const width = peak > 0 ? Math.round((item.views / peak) * 100) : 0;
+              const viewsLabel = `${item.views} ${item.views === 1 ? "view" : "views"}`;
+              const peopleLabel = `${item.visitors} ${item.visitors === 1 ? "person" : "people"}`;
+              const applyLabel = `${item.applyClicks} ${item.applyClicks === 1 ? "apply click" : "apply clicks"}`;
+              return (
+                <li key={item.id}>
+                  <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/jobs/${item.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium hover:underline"
+                        style={{ color: PINK_DEEP }}
+                      >
+                        {item.role}
+                      </Link>
+                      <span style={{ color: PINK_MUTED }}>
+                        {" · "}
+                        {item.venue}
+                        {item.city ? ` (${item.city})` : ""}
+                        {" · "}
+                        <span className="text-xs">Posted {formatDate(item.postedAt)}</span>
+                      </span>
+                      {item.status === "filled" && (
+                        <span
+                          className="ml-2 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium"
+                          style={{ background: "#fde8ef", color: PINK_DEEP }}
+                        >
+                          Filled
+                        </span>
+                      )}
+                    </div>
+                    <span className="shrink-0 text-xs sm:text-sm" style={{ color: PINK_MUTED }}>
+                      <strong className="font-semibold" style={{ color: PINK_DEEP }}>
+                        {viewsLabel}
+                      </strong>
+                      {` · ${peopleLabel} · `}
+                      <span
+                        className={item.applyClicks > 0 ? "font-semibold" : undefined}
+                        style={item.applyClicks > 0 ? { color: PINK_DEEP } : undefined}
+                      >
+                        {applyLabel}
+                      </span>
+                    </span>
+                  </div>
+                  <div
+                    className="h-2.5 rounded-full"
+                    style={{ background: "#fde8ef" }}
+                    role="img"
+                    aria-label={`${item.role} at ${item.venue}: ${viewsLabel}, ${peopleLabel}, ${applyLabel}`}
+                  >
+                    {width > 0 && (
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${width}%`, background: PINK }}
+                      />
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
     </>
   );
 }

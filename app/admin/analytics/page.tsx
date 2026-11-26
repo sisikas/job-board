@@ -17,7 +17,7 @@ export default async function AnalyticsPage() {
             Analytics
           </h1>
           <p className="text-sm mt-0.5" style={{ color: "#a06a80" }}>
-            Visitors and users, for the dates you pick.
+            Visitors, users, and roles, for the dates you pick.
           </p>
         </div>
       </header>

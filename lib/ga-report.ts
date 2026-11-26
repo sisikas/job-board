@@ -1,6 +1,21 @@
 import crypto from "crypto";
+import { getAdminJobs, type Job } from "@/lib/jobs";
 
 export type NameCount = { label: string; users: number };
+
+export type JobStat = {
+  id: string;
+  role: string;
+  venue: string;
+  city: string;
+  country: string;
+  postedAt: string;
+  status: "open" | "filled";
+  views: number;
+  visitors: number;
+  applyClicks: number;
+  applyUsers: number;
+};
 
 export type ReturnVisit = {
   label: string;
@@ -57,6 +72,14 @@ export type AnalyticsReport = {
     clicked: CountStat;
     scrolled: CountStat;
     bounced: CountStat;
+    error?: string;
+  };
+  roles: {
+    totalViews: number;
+    totalVisitors: number;
+    totalApplyClicks: number;
+    totalApplyUsers: number;
+    items: JobStat[];
     error?: string;
   };
 };
@@ -396,6 +419,77 @@ function pagePath(path: string) {
   };
 }
 
+function jobPagesPrefix() {
+  return {
+    filter: {
+      fieldName: "pagePath",
+      stringFilter: { matchType: "BEGINS_WITH", value: "/jobs/", caseSensitive: false },
+    },
+  };
+}
+
+function jobIdFromPath(path: string): string | null {
+  const match = /^\/jobs\/([^/?#]+)\/?$/i.exec(path.trim());
+  return match ? match[1].toLowerCase() : null;
+}
+
+function buildRoleStats(
+  jobs: Job[],
+  viewsReport: GaReport | undefined,
+  applyReport: GaReport | undefined
+): JobStat[] {
+  const viewsByJob = new Map<string, { views: number; visitors: number }>();
+  for (const row of viewsReport?.rows ?? []) {
+    const id = jobIdFromPath(dimensionValue(viewsReport, row, "pagePath"));
+    if (!id) continue;
+    const prev = viewsByJob.get(id) ?? { views: 0, visitors: 0 };
+    viewsByJob.set(id, {
+      views: prev.views + metricValue(viewsReport, row, "screenPageViews"),
+      visitors: Math.max(prev.visitors, metricValue(viewsReport, row, "activeUsers")),
+    });
+  }
+
+  const applyByJob = new Map<string, { clicks: number; users: number }>();
+  for (const row of applyReport?.rows ?? []) {
+    const id = jobIdFromPath(dimensionValue(applyReport, row, "pagePath"));
+    if (!id) continue;
+    const prev = applyByJob.get(id) ?? { clicks: 0, users: 0 };
+    applyByJob.set(id, {
+      clicks: prev.clicks + metricValue(applyReport, row, "eventCount"),
+      users: Math.max(prev.users, metricValue(applyReport, row, "activeUsers")),
+    });
+  }
+
+  const items: JobStat[] = jobs.map((job) => {
+    const key = job.id.toLowerCase();
+    const viewStat = viewsByJob.get(key);
+    const applyStat = applyByJob.get(key);
+    return {
+      id: job.id,
+      role: job.role,
+      venue: job.venue,
+      city: job.city,
+      country: job.country,
+      postedAt: job.postedAt,
+      status: job.status,
+      views: viewStat?.views ?? 0,
+      visitors: viewStat?.visitors ?? 0,
+      applyClicks: applyStat?.clicks ?? 0,
+      applyUsers: applyStat?.users ?? 0,
+    };
+  });
+
+  items.sort((a, b) => {
+    if (b.views !== a.views) return b.views - a.views;
+    if (b.visitors !== a.visitors) return b.visitors - a.visitors;
+    if (b.applyClicks !== a.applyClicks) return b.applyClicks - a.applyClicks;
+    if (b.postedAt !== a.postedAt) return b.postedAt.localeCompare(a.postedAt);
+    return a.role.localeCompare(b.role);
+  });
+
+  return items;
+}
+
 function asError(error: unknown, fallback: string) {
   return error instanceof Error ? error : new Error(fallback);
 }
@@ -698,6 +792,43 @@ export async function getAnalyticsReport(
     .then((table) => funnelStepUsers(table, 2))
     .catch((error: unknown) => asError(error, "Post a job clicks could not be loaded."));
 
+  const applyClickFilter = {
+    filter: {
+      fieldName: "eventName",
+      stringFilter: { matchType: "EXACT", value: "apply_click" },
+    },
+  };
+  const rolesReport = runReports(creds.propertyId, token, [
+    {
+      dateRanges,
+      metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
+      dimensionFilter: combineFilters(jobPagesPrefix(), countryFilter, hourFilter),
+    },
+    {
+      dateRanges,
+      metrics: [{ name: "eventCount" }, { name: "activeUsers" }],
+      dimensionFilter: combineFilters(jobPagesPrefix(), applyClickFilter, countryFilter, hourFilter),
+    },
+    {
+      dateRanges,
+      dimensions: [{ name: "pagePath" }],
+      metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
+      dimensionFilter: combineFilters(jobPagesPrefix(), countryFilter, hourFilter),
+      orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
+      limit: "500",
+    },
+    {
+      dateRanges,
+      dimensions: [{ name: "pagePath" }],
+      metrics: [{ name: "eventCount" }, { name: "activeUsers" }],
+      dimensionFilter: combineFilters(jobPagesPrefix(), applyClickFilter, countryFilter, hourFilter),
+      limit: "500",
+    },
+  ]).catch((error: unknown) => asError(error, "The role view numbers could not be loaded."));
+  const jobsPromise = getAdminJobs().catch((error: unknown) =>
+    asError(error, "The roles list could not be loaded.")
+  );
+
   const [overview, events, sources, countries] = await main;
   const returns = await returnsReport;
   const alertClicks = await alertClicksReport;
@@ -734,6 +865,22 @@ export async function getAnalyticsReport(
   const bouncedVisits = Math.round(hiringSessions * bounceRate);
   const scrolledUsers = metricValue(scrollReport, scrollReport?.rows?.[0], "activeUsers");
   const clickedUsers = clicked instanceof Error ? 0 : Math.min(hiringVisitors || clicked, clicked);
+  const rolesData = await rolesReport;
+  const jobsList = await jobsPromise;
+  const rolesError =
+    rolesData instanceof Error
+      ? rolesData.message
+      : jobsList instanceof Error
+        ? jobsList.message
+        : undefined;
+  const roleViewsTotalReport = rolesData instanceof Error ? undefined : rolesData[0];
+  const roleApplyTotalReport = rolesData instanceof Error ? undefined : rolesData[1];
+  const roleViewsByPathReport = rolesData instanceof Error ? undefined : rolesData[2];
+  const roleApplyByPathReport = rolesData instanceof Error ? undefined : rolesData[3];
+  const roleItems =
+    rolesData instanceof Error || jobsList instanceof Error
+      ? []
+      : buildRoleStats(jobsList, roleViewsByPathReport, roleApplyByPathReport);
   return {
     start,
     end,
@@ -801,6 +948,30 @@ export async function getAnalyticsReport(
         error: hiringFailed ? hiring.message : undefined,
       },
       error: hiringFailed ? hiring.message : undefined,
+    },
+    roles: {
+      totalViews: metricValue(
+        roleViewsTotalReport,
+        roleViewsTotalReport?.rows?.[0],
+        "screenPageViews"
+      ),
+      totalVisitors: metricValue(
+        roleViewsTotalReport,
+        roleViewsTotalReport?.rows?.[0],
+        "activeUsers"
+      ),
+      totalApplyClicks: metricValue(
+        roleApplyTotalReport,
+        roleApplyTotalReport?.rows?.[0],
+        "eventCount"
+      ),
+      totalApplyUsers: metricValue(
+        roleApplyTotalReport,
+        roleApplyTotalReport?.rows?.[0],
+        "activeUsers"
+      ),
+      items: roleItems,
+      error: rolesError,
     },
   };
 }
